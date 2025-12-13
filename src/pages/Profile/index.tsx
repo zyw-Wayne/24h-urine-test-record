@@ -1,4 +1,3 @@
-// AIGC START
 import { useState, useEffect } from 'react'
 import {
   Card,
@@ -33,12 +32,21 @@ const ProfilePage = () => {
       const userConfig = await configService.get()
       if (userConfig) {
         setConfig(userConfig)
-        configForm.setFieldsValue(userConfig)
       }
     } catch (error) {
       console.error('加载配置失败', error)
     }
   }
+
+  // 当弹窗打开时，确保表单值已设置（因为 initialValues 只在首次渲染时生效）
+  useEffect(() => {
+    if (configFormVisible && config) {
+      // 使用 setTimeout 确保 Form 已经渲染
+      setTimeout(() => {
+        configForm.setFieldsValue(config)
+      }, 0)
+    }
+  }, [configFormVisible, config, configForm])
 
   const handleSaveConfig = async (values: UserConfig) => {
     setLoading(true)
@@ -228,10 +236,10 @@ const ProfilePage = () => {
           <div>
             <strong>正常值参考：</strong>
             <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
-              <li>24小时尿蛋白: &lt; 150 mg</li>
-              <li>肌酐: 44-133 μmol/L</li>
-              <li>尿比重: 1.003-1.030</li>
-              <li>pH值: 4.6-8.0</li>
+              <li>24小时尿蛋白: &lt; 150 mg（男女通用）</li>
+              <li>肌酐: 男性 53-106 μmol/L，女性 44-97 μmol/L</li>
+              <li>尿比重: 1.003-1.030（男女通用）</li>
+              <li>pH值: 4.6-8.0（男女通用）</li>
             </ul>
           </div>
         </div>
@@ -251,16 +259,17 @@ const ProfilePage = () => {
         onMaskClick={() => setConfigFormVisible(false)}
         bodyStyle={{ padding: '20px' }}
       >
-        <Form
-          form={configForm}
-          onFinish={handleSaveConfig}
-          initialValues={config}
-          footer={
-            <Button block type="submit" color="primary" loading={loading}>
-              保存
-            </Button>
-          }
-        >
+        {configFormVisible && (
+          <Form
+            form={configForm}
+            onFinish={handleSaveConfig}
+            initialValues={config}
+            footer={
+              <Button block type="submit" color="primary" loading={loading}>
+                保存
+              </Button>
+            }
+          >
           <Form.Item name="nickname" label="昵称" rules={[{ required: true, message: '请输入昵称' }]}>
             <Input placeholder="请输入昵称" />
           </Form.Item>
@@ -308,11 +317,11 @@ const ProfilePage = () => {
             />
           </Form.Item>
         </Form>
+        )}
       </Popup>
     </div>
   )
 }
 
 export default ProfilePage
-// AIGC END
 

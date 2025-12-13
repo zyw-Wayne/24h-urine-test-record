@@ -1,4 +1,3 @@
-// AIGC START
 import { useState, useEffect } from 'react'
 import {
   Card,
@@ -11,10 +10,10 @@ import {
 } from 'antd-mobile'
 import { DeleteOutline } from 'antd-mobile-icons'
 import dayjs from 'dayjs'
-import type { TestCycle } from '@/types'
-import { cycleService } from '@/services/db'
+import type { TestCycle, UserConfig } from '@/types'
+import { cycleService, configService } from '@/services/db'
 import { formatDateTime } from '@/utils'
-import { NORMAL_RANGES } from '@/constants'
+import { getNormalRanges } from '@/utils/normalRanges'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -22,14 +21,20 @@ import EmptyState from '@/components/Common/EmptyState'
 
 const HistoryPage = () => {
   const [cycles, setCycles] = useState<TestCycle[]>([])
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedCycle, setSelectedCycle] = useState<TestCycle | null>(null)
   const [detailVisible, setDetailVisible] = useState(false)
   const [chartVisible, setChartVisible] = useState(false)
-  const [timeRange, setTimeRange] = useState<'7days' | '30days' | 'all'>('all')
+  const [timeRange, setTimeRange] = useState<'3months' | '6months' | 'all'>('all')
 
   useEffect(() => {
-    loadCycles()
+    const loadData = async () => {
+      const config = await configService.get()
+      setUserConfig(config)
+      await loadCycles()
+    }
+    loadData()
   }, [])
 
   const loadCycles = async () => {
@@ -70,43 +75,50 @@ const HistoryPage = () => {
   // 过滤数据
   const getFilteredCycles = () => {
     if (timeRange === 'all') return cycles
-    const days = timeRange === '7days' ? 7 : 30
-    const cutoffDate = dayjs().subtract(days, 'day')
+    const months = timeRange === '3months' ? 3 : 6
+    const cutoffDate = dayjs().subtract(months, 'month')
     return cycles.filter((cycle) => dayjs(cycle.createdAt).isAfter(cutoffDate))
   }
 
   const filteredCycles = getFilteredCycles()
+  const normalRanges = getNormalRanges(userConfig || undefined)
 
   return (
     <div style={{ padding: '16px', paddingBottom: '80px' }}>
       {/* 时间筛选 */}
       <Card style={{ marginBottom: '16px' }}>
-        <Space>
-          <Button
-            size="small"
-            color={timeRange === '7days' ? 'primary' : 'default'}
-            onClick={() => setTimeRange('7days')}
-          >
-            最近7天
-          </Button>
-          <Button
-            size="small"
-            color={timeRange === '30days' ? 'primary' : 'default'}
-            onClick={() => setTimeRange('30days')}
-          >
-            最近30天
-          </Button>
-          <Button
-            size="small"
-            color={timeRange === 'all' ? 'primary' : 'default'}
-            onClick={() => setTimeRange('all')}
-          >
-            全部
-          </Button>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            <Button
+              size="small"
+              color={timeRange === '3months' ? 'primary' : 'default'}
+              onClick={() => setTimeRange('3months')}
+              style={{ flex: 1 }}
+            >
+              最近三个月
+            </Button>
+            <Button
+              size="small"
+              color={timeRange === '6months' ? 'primary' : 'default'}
+              onClick={() => setTimeRange('6months')}
+              style={{ flex: 1 }}
+            >
+              最近半年
+            </Button>
+            <Button
+              size="small"
+              color={timeRange === 'all' ? 'primary' : 'default'}
+              onClick={() => setTimeRange('all')}
+              style={{ flex: 1 }}
+            >
+              全部
+            </Button>
+          </div>
           <Button
             size="small"
             color="primary"
             onClick={() => setChartVisible(true)}
+            block
           >
             查看图表
           </Button>
@@ -153,7 +165,7 @@ const HistoryPage = () => {
                       <span
                         style={{
                           color:
-                            cycle.testResults.proteinTotal24h * 1000 > NORMAL_RANGES.PROTEIN_24H
+                            cycle.testResults.proteinTotal24h * 1000 > normalRanges.protein24h
                               ? 'red'
                               : 'inherit',
                         }}
@@ -200,5 +212,4 @@ const HistoryPage = () => {
 }
 
 export default HistoryPage
-// AIGC END
 

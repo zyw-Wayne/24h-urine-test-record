@@ -1,4 +1,3 @@
-// AIGC START
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/Common/ErrorBoundary'
@@ -24,5 +23,4 @@ function App() {
 }
 
 export default App
-// AIGC END
 
