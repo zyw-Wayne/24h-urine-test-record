@@ -1,4 +1,3 @@
-// AIGC START
 // TypeScript类型定义
 
 // 检测周期状态
@@ -28,8 +27,10 @@ export interface UrinationRecord {
 
 // 检测结果
 export interface TestResult {
-  protein: number // 尿蛋白(mg/L)
+  protein24hQuantitative: number // 24H尿蛋白定量(mg/L)
   proteinTotal24h?: number // 24h总蛋白(g)
+  proteinRoutine?: string // 尿常规-尿蛋白（如：阴性、1+、2+、++、+++等）
+  occultBlood?: string // 尿常规-潜血（如：阴性、1+、2+、++、+++等）
   creatinine: number // 肌酐(μmol/L)
   specificGravity: number // 尿比重
   ph: number // pH值
@@ -55,5 +56,4 @@ export interface BackupData {
   testCycles: TestCycle[]
   userConfig: UserConfig
 }
-// AIGC END
 
