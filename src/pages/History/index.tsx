@@ -34,6 +34,7 @@ const HistoryPage = () => {
   const [manualFormVisible, setManualFormVisible] = useState(false)
   const [editingCycle, setEditingCycle] = useState<TestCycle | null>(null)
   const [manualForm] = Form.useForm()
+  const startTime = Form.useWatch('startTime', manualForm)
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,8 +82,9 @@ const HistoryPage = () => {
       setManualFormVisible(true)
       // 填充表单数据
       setTimeout(() => {
+        const startTimeValue = new Date(cycle.startTime)
         manualForm.setFieldsValue({
-          startTime: new Date(cycle.startTime),
+          startTime: startTimeValue,
           totalVolume: cycle.totalVolume,
           protein24hQuantitative: cycle.testResults?.protein24hQuantitative,
           proteinTotal24h: cycle.testResults?.proteinTotal24h,
@@ -92,7 +94,7 @@ const HistoryPage = () => {
           specificGravity: cycle.testResults?.specificGravity,
           ph: cycle.testResults?.ph,
         })
-      }, 0)
+      }, 100)
     } else {
       // 正常记录显示详情
       setSelectedCycle(cycle)
@@ -389,9 +391,32 @@ const HistoryPage = () => {
               label="开始时间"
               rules={[{ required: true, message: '请选择开始时间' }]}
             >
-              <DatePicker precision="minute">
-                {(value) => (value ? formatDateTime(value) : '请选择时间')}
-              </DatePicker>
+              <div
+                onClick={async () => {
+                  const currentValue = startTime || manualForm.getFieldValue('startTime')
+                  const value = await DatePicker.prompt({
+                    precision: 'minute',
+                    defaultValue: currentValue ? (currentValue instanceof Date ? currentValue : new Date(currentValue)) : new Date(),
+                  })
+                  if (value) {
+                    manualForm.setFieldsValue({ startTime: value })
+                  }
+                }}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  minHeight: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  backgroundColor: '#fff',
+                }}
+              >
+                {startTime 
+                  ? formatDateTime(startTime instanceof Date ? startTime : new Date(startTime))
+                  : <span style={{ color: '#999' }}>请选择时间</span>}
+              </div>
             </Form.Item>
             <Form.Item
               name="totalVolume"
