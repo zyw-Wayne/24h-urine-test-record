@@ -683,7 +683,6 @@ const RecordPage = () => {
                   { label: '+++', value: '+++' },
                   { label: '++++', value: '++++' },
                 ]}
-                placeholder="请选择"
               />
             </Form.Item>
             <Form.Item
@@ -703,7 +702,6 @@ const RecordPage = () => {
                   { label: '+++', value: '+++' },
                   { label: '++++', value: '++++' },
                 ]}
-                placeholder="请选择"
               />
             </Form.Item>
             <Form.Item

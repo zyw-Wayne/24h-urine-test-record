@@ -68,34 +68,6 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
   const occultBloodValues = sortedCycles
     .map((cycle) => convertRoutineValue(cycle.testResults?.occultBlood))
 
-  // 尿量趋势图
-  const volumeChartData = {
-    labels,
-    datasets: [
-      {
-        label: '总尿量 (ml)',
-        data: volumes,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1,
-      },
-    ],
-  }
-
-  // 24h总蛋白趋势图
-  const proteinChartData = {
-    labels,
-    datasets: [
-      {
-        label: '24h总蛋白 (mg)',
-        data: proteins,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.1,
-      },
-    ],
-  }
-
   // 24H尿蛋白定量趋势图
   const protein24hQuantitativeChartData = {
     labels,
