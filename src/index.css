@@ -64,6 +64,18 @@ input, textarea {
     padding-left: max(0px, env(safe-area-inset-left));
     padding-right: max(0px, env(safe-area-inset-right));
   }
+  
+  /* 确保页面内容不被安全区域遮挡 */
+  #root {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* 移动端页面容器适配 */
+.page-container {
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 80px));
+  min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
 }
 /* AIGC END */
 
