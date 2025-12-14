@@ -1,7 +1,7 @@
 // TypeScript类型定义
 
 // 检测周期状态
-export type CycleStatus = 'ongoing' | 'completed'
+export type CycleStatus = 'ongoing' | 'completed' | 'manual'
 
 // 检测周期
 export interface TestCycle {
