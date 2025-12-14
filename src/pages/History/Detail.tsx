@@ -94,7 +94,9 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>状态:</span>
-            <span>{cycle.status === 'ongoing' ? '进行中' : '已完成'}</span>
+            <span>
+              {cycle.status === 'ongoing' ? '进行中' : cycle.status === 'manual' ? '手动录入' : '已完成'}
+            </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>总尿量:</span>

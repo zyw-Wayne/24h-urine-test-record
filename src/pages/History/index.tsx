@@ -7,12 +7,16 @@ import {
   Popup,
   Space,
   Dialog,
+  Form,
+  Input,
+  DatePicker,
+  Selector,
 } from 'antd-mobile'
-import { DeleteOutline } from 'antd-mobile-icons'
+import { DeleteOutline, AddOutline } from 'antd-mobile-icons'
 import dayjs from 'dayjs'
-import type { TestCycle, UserConfig } from '@/types'
+import type { TestCycle, UserConfig, TestResult } from '@/types'
 import { cycleService, configService } from '@/services/db'
-import { formatDateTime } from '@/utils'
+import { formatDateTime, calculateProteinTotal24h } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
@@ -27,6 +31,9 @@ const HistoryPage = () => {
   const [detailVisible, setDetailVisible] = useState(false)
   const [chartVisible, setChartVisible] = useState(false)
   const [timeRange, setTimeRange] = useState<'3months' | '6months' | 'all'>('all')
+  const [manualFormVisible, setManualFormVisible] = useState(false)
+  const [editingCycle, setEditingCycle] = useState<TestCycle | null>(null)
+  const [manualForm] = Form.useForm()
 
   useEffect(() => {
     const loadData = async () => {
@@ -68,8 +75,104 @@ const HistoryPage = () => {
   }
 
   const handleViewDetail = (cycle: TestCycle) => {
-    setSelectedCycle(cycle)
-    setDetailVisible(true)
+    // 如果是手动录入的记录，打开编辑表单
+    if (cycle.status === 'manual') {
+      setEditingCycle(cycle)
+      setManualFormVisible(true)
+      // 填充表单数据
+      setTimeout(() => {
+        manualForm.setFieldsValue({
+          startTime: new Date(cycle.startTime),
+          totalVolume: cycle.totalVolume,
+          protein24hQuantitative: cycle.testResults?.protein24hQuantitative,
+          proteinTotal24h: cycle.testResults?.proteinTotal24h,
+          proteinRoutine: cycle.testResults?.proteinRoutine,
+          occultBlood: cycle.testResults?.occultBlood,
+          creatinine: cycle.testResults?.creatinine,
+          specificGravity: cycle.testResults?.specificGravity,
+          ph: cycle.testResults?.ph,
+        })
+      }, 0)
+    } else {
+      // 正常记录显示详情
+      setSelectedCycle(cycle)
+      setDetailVisible(true)
+    }
+  }
+
+  // 打开新增手动录入表单
+  const handleAddManualRecord = () => {
+    setEditingCycle(null)
+    setManualFormVisible(true)
+    manualForm.resetFields()
+  }
+
+  // 保存手动录入的数据
+  const handleSaveManualRecord = async (values: {
+    startTime: Date
+    totalVolume: number
+    protein24hQuantitative: number
+    proteinTotal24h?: number
+    proteinRoutine?: string
+    occultBlood?: string
+    creatinine: number
+    specificGravity: number
+    ph: number
+  }) => {
+    setLoading(true)
+    try {
+      const startTime = values.startTime instanceof Date 
+        ? values.startTime.toISOString() 
+        : values.startTime
+      
+      // 计算24小时总蛋白量（如果未手动输入）
+      let proteinTotal24h = values.proteinTotal24h
+      if (!proteinTotal24h && values.protein24hQuantitative && values.totalVolume) {
+        proteinTotal24h = calculateProteinTotal24h(values.protein24hQuantitative, values.totalVolume)
+      }
+
+      const testResult: TestResult = {
+        protein24hQuantitative: values.protein24hQuantitative,
+        proteinTotal24h,
+        proteinRoutine: values.proteinRoutine,
+        occultBlood: values.occultBlood,
+        creatinine: values.creatinine,
+        specificGravity: values.specificGravity,
+        ph: values.ph,
+        testedAt: startTime,
+      }
+
+      if (editingCycle) {
+        // 编辑模式：更新现有记录
+        await cycleService.update(editingCycle.id, {
+          startTime,
+          endTime: dayjs(startTime).add(24, 'hour').toISOString(),
+          totalVolume: values.totalVolume,
+          testResults: testResult,
+        })
+        Toast.show({ content: '更新成功', icon: 'success' })
+      } else {
+        // 新增模式：创建新记录
+        await cycleService.create({
+          startTime,
+          endTime: dayjs(startTime).add(24, 'hour').toISOString(),
+          status: 'manual',
+          totalVolume: values.totalVolume,
+          urinationRecords: [],
+          testResults: testResult,
+        })
+        Toast.show({ content: '保存成功', icon: 'success' })
+      }
+
+      setManualFormVisible(false)
+      setEditingCycle(null)
+      manualForm.resetFields()
+      await loadCycles()
+    } catch (error) {
+      Toast.show({ content: editingCycle ? '更新失败' : '保存失败', icon: 'fail' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 过滤数据
@@ -126,6 +229,16 @@ const HistoryPage = () => {
           >
             查看图表
           </Button>
+          <Button
+            size="small"
+            color="primary"
+            onClick={handleAddManualRecord}
+            block
+            style={{ marginTop: '8px' }}
+          >
+            <AddOutline style={{ marginRight: '4px' }} />
+            添加历史记录
+          </Button>
         </Space>
       </Card>
 
@@ -180,7 +293,19 @@ const HistoryPage = () => {
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                  状态: {cycle.status === 'ongoing' ? '进行中' : '已完成'}
+                  状态: {cycle.status === 'ongoing' ? '进行中' : cycle.status === 'manual' ? '手动录入' : '已完成'}
+                  {cycle.status === 'manual' && (
+                    <span style={{ 
+                      marginLeft: '8px', 
+                      padding: '2px 6px', 
+                      backgroundColor: '#e6f7ff', 
+                      color: '#1890ff',
+                      borderRadius: '2px',
+                      fontSize: '11px'
+                    }}>
+                      手动录入
+                    </span>
+                  )}
                 </div>
               </div>
             </List.Item>
@@ -225,6 +350,237 @@ const HistoryPage = () => {
         onClose={() => setChartVisible(false)}
       >
         <HistoryChart cycles={filteredCycles} />
+      </Popup>
+
+      {/* 手动录入表单弹窗 */}
+      <Popup
+        visible={manualFormVisible}
+        onMaskClick={() => {
+          setManualFormVisible(false)
+          setEditingCycle(null)
+          manualForm.resetFields()
+        }}
+        bodyStyle={{ 
+          padding: '20px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
+          paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+        }}
+        showCloseButton
+        onClose={() => {
+          setManualFormVisible(false)
+          setEditingCycle(null)
+          manualForm.resetFields()
+        }}
+      >
+        {manualFormVisible && (
+          <Form
+            form={manualForm}
+            onFinish={handleSaveManualRecord}
+            footer={
+              <Button block type="submit" color="primary" loading={loading}>
+                {editingCycle ? '更新' : '保存'}
+              </Button>
+            }
+          >
+            <Form.Item
+              name="startTime"
+              label="开始时间"
+              rules={[{ required: true, message: '请选择开始时间' }]}
+            >
+              <DatePicker precision="minute">
+                {(value) => (value ? formatDateTime(value) : '请选择时间')}
+              </DatePicker>
+            </Form.Item>
+            <Form.Item
+              name="totalVolume"
+              label="总尿量(ml)"
+              rules={[
+                { required: true, message: '请输入总尿量' },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    if (!value || Number(value) > 0) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('总尿量必须大于0'))
+                  }
+                },
+              ]}
+            >
+              <Input 
+                type="number" 
+                placeholder="请输入总尿量" 
+                inputMode="decimal"
+                onChange={(value) => {
+                  // 自动计算24小时总蛋白量
+                  const protein24h = manualForm.getFieldValue('protein24hQuantitative')
+                  if (protein24h && value) {
+                    const calculated = calculateProteinTotal24h(Number(protein24h), Number(value))
+                    const currentProteinTotal = manualForm.getFieldValue('proteinTotal24h')
+                    // 只有当用户没有手动修改过时才自动计算
+                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(protein24h, manualForm.getFieldValue('totalVolume') || 0)) {
+                      manualForm.setFieldsValue({ proteinTotal24h: calculated })
+                    }
+                  }
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="protein24hQuantitative"
+              label="24H尿蛋白定量(mg/L)"
+              rules={[
+                { required: true, message: '请输入24H尿蛋白定量' },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    if (!value || Number(value) >= 0) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('24H尿蛋白定量不能为负数'))
+                  }
+                },
+              ]}
+            >
+              <Input 
+                type="number" 
+                placeholder="请输入24H尿蛋白定量" 
+                inputMode="decimal"
+                onChange={(value) => {
+                  // 自动计算24小时总蛋白量
+                  const totalVolume = manualForm.getFieldValue('totalVolume')
+                  if (totalVolume && value) {
+                    const calculated = calculateProteinTotal24h(Number(value), Number(totalVolume))
+                    const currentProteinTotal = manualForm.getFieldValue('proteinTotal24h')
+                    // 只有当用户没有手动修改过时才自动计算
+                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(manualForm.getFieldValue('protein24hQuantitative') || 0, totalVolume)) {
+                      manualForm.setFieldsValue({ proteinTotal24h: calculated })
+                    }
+                  }
+                }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="proteinTotal24h"
+              label="24小时总蛋白量(g)"
+              rules={[
+                { required: false },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    if (!value || Number(value) >= 0) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('24小时总蛋白量不能为负数'))
+                  }
+                },
+              ]}
+              extra="留空将自动计算，或手动输入覆盖"
+            >
+              <Input 
+                type="number" 
+                step="0.001"
+                placeholder="自动计算或手动输入" 
+                inputMode="decimal"
+              />
+            </Form.Item>
+            <Form.Item
+              name="proteinRoutine"
+              label="尿常规-尿蛋白"
+              rules={[{ required: false }]}
+            >
+              <Selector
+                options={[
+                  { label: '阴性(-)', value: '阴性(-)' },
+                  { label: '弱阳性(±)', value: '弱阳性(±)' },
+                  { label: '1+', value: '1+' },
+                  { label: '2+', value: '2+' },
+                  { label: '3+', value: '3+' },
+                  { label: '4+', value: '4+' },
+                  { label: '++', value: '++' },
+                  { label: '+++', value: '+++' },
+                  { label: '++++', value: '++++' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="occultBlood"
+              label="尿常规-潜血"
+              rules={[{ required: false }]}
+            >
+              <Selector
+                options={[
+                  { label: '阴性(-)', value: '阴性(-)' },
+                  { label: '弱阳性(±)', value: '弱阳性(±)' },
+                  { label: '1+', value: '1+' },
+                  { label: '2+', value: '2+' },
+                  { label: '3+', value: '3+' },
+                  { label: '4+', value: '4+' },
+                  { label: '++', value: '++' },
+                  { label: '+++', value: '+++' },
+                  { label: '++++', value: '++++' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="creatinine"
+              label="肌酐(μmol/L)"
+              rules={[
+                { required: true, message: '请输入肌酐' },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    if (!value || Number(value) >= 0) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('肌酐不能为负数'))
+                  }
+                },
+              ]}
+            >
+              <Input type="number" placeholder="请输入肌酐" inputMode="decimal" />
+            </Form.Item>
+            <Form.Item
+              name="specificGravity"
+              label="尿比重"
+              rules={[
+                { required: true, message: '请输入尿比重' },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    const num = Number(value)
+                    if (!value || (num >= 1.000 && num <= 1.050)) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('尿比重应在1.000-1.050之间'))
+                  }
+                },
+              ]}
+            >
+              <Input type="number" step="0.001" placeholder="请输入尿比重(1.000-1.050)" inputMode="decimal" />
+            </Form.Item>
+            <Form.Item
+              name="ph"
+              label="pH值"
+              rules={[
+                { required: true, message: '请输入pH值' },
+                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
+                { 
+                  validator: (_, value) => {
+                    const num = Number(value)
+                    if (!value || (num >= 0 && num <= 14)) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('pH值应在0-14之间'))
+                  }
+                },
+              ]}
+            >
+              <Input type="number" step="0.1" placeholder="请输入pH值(0-14)" inputMode="decimal" />
+            </Form.Item>
+          </Form>
+        )}
       </Popup>
     </div>
   )
