@@ -301,7 +301,11 @@ const RecordPage = () => {
 
   if (!currentCycle) {
     return (
-      <div style={{ padding: '16px', paddingBottom: '80px' }}>
+      <div style={{ 
+        padding: '16px', 
+        paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+        paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
+      }}>
         <Card>
           <Space direction="vertical" style={{ width: '100%' }} align="center">
             <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
@@ -329,7 +333,11 @@ const RecordPage = () => {
   }
 
   return (
-    <div style={{ padding: '16px', paddingBottom: '80px' }}>
+    <div style={{ 
+      padding: '16px', 
+      paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+      paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
+    }}>
       {/* 周期信息卡片 */}
       <Card
         title={
@@ -589,7 +597,15 @@ const RecordPage = () => {
         <Popup
           visible={urinationFormVisible}
           onMaskClick={() => setUrinationFormVisible(false)}
-          bodyStyle={{ padding: '20px' }}
+          bodyStyle={{ 
+            padding: '20px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
+            paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+          }}
+          showCloseButton
+          onClose={() => setUrinationFormVisible(false)}
         >
           {urinationFormVisible && (
             <Form
@@ -636,7 +652,15 @@ const RecordPage = () => {
         <Popup
           visible={testResultFormVisible}
           onMaskClick={() => setTestResultFormVisible(false)}
-          bodyStyle={{ padding: '20px' }}
+          bodyStyle={{ 
+            padding: '20px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
+            paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+          }}
+          showCloseButton
+          onClose={() => setTestResultFormVisible(false)}
         >
           {testResultFormVisible && (
             <Form

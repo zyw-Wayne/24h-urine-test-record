@@ -1,4 +1,3 @@
-// AIGC START
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TabBar } from 'antd-mobile'
 import { FileOutline, UnorderedListOutline, UserOutline } from 'antd-mobile-icons'
@@ -31,17 +30,39 @@ const Layout = ({ children }: LayoutProps) => {
   ]
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
-      <TabBar activeKey={location.pathname} onChange={(key) => navigate(key)}>
-        {tabs.map((item) => (
-          <TabBar.Item key={item.key} icon={item.icon} title={item.title} />
-        ))}
-      </TabBar>
+    <div style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      paddingTop: 'env(safe-area-inset-top)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 50px)',
+    }}>
+      <div style={{ 
+        flex: 1, 
+        overflow: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {children}
+      </div>
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        backgroundColor: '#fff',
+        borderTop: '1px solid #f0f0f0',
+      }}>
+        <TabBar activeKey={location.pathname} onChange={(key) => navigate(key)}>
+          {tabs.map((item) => (
+            <TabBar.Item key={item.key} icon={item.icon} title={item.title} />
+          ))}
+        </TabBar>
+      </div>
     </div>
   )
 }
 
 export default Layout
-// AIGC END
 

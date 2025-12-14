@@ -135,7 +135,11 @@ const ProfilePage = () => {
   }
 
   return (
-    <div style={{ padding: '16px', paddingBottom: '80px' }}>
+    <div style={{ 
+      padding: '16px', 
+      paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+      paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
+    }}>
       {/* 个人信息 */}
       <Card title="个人信息" style={{ marginBottom: '16px' }}>
         <List>
@@ -257,7 +261,15 @@ const ProfilePage = () => {
       <Popup
         visible={configFormVisible}
         onMaskClick={() => setConfigFormVisible(false)}
-        bodyStyle={{ padding: '20px' }}
+        bodyStyle={{ 
+          padding: '20px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
+          paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
+        }}
+        showCloseButton
+        onClose={() => setConfigFormVisible(false)}
       >
         {configFormVisible && (
           <Form

@@ -84,7 +84,11 @@ const HistoryPage = () => {
   const normalRanges = getNormalRanges(userConfig || undefined)
 
   return (
-    <div style={{ padding: '16px', paddingBottom: '80px' }}>
+    <div style={{ 
+      padding: '16px', 
+      paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+      paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
+    }}>
       {/* 时间筛选 */}
       <Card style={{ marginBottom: '16px' }}>
         <Space direction="vertical" style={{ width: '100%' }}>
@@ -188,7 +192,14 @@ const HistoryPage = () => {
       <Popup
         visible={detailVisible}
         onMaskClick={() => setDetailVisible(false)}
-        bodyStyle={{ height: '80vh', overflow: 'auto' }}
+        bodyStyle={{ 
+          maxHeight: '90vh', 
+          overflowY: 'auto',
+          paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
+          paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+        }}
+        showCloseButton
+        onClose={() => setDetailVisible(false)}
       >
         {selectedCycle && (
           <HistoryDetail
@@ -203,7 +214,15 @@ const HistoryPage = () => {
       <Popup
         visible={chartVisible}
         onMaskClick={() => setChartVisible(false)}
-        bodyStyle={{ height: '80vh', overflow: 'auto', padding: '16px' }}
+        bodyStyle={{ 
+          maxHeight: '90vh', 
+          overflowY: 'auto', 
+          padding: '16px',
+          paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
+          paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+        }}
+        showCloseButton
+        onClose={() => setChartVisible(false)}
       >
         <HistoryChart cycles={filteredCycles} />
       </Popup>
