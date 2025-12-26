@@ -99,6 +99,7 @@ export const cycleService = {
 export const urinationService = {
   // 添加排尿记录
   async add(record: Omit<UrinationRecord, 'id' | 'createdAt'>): Promise<UrinationRecord> {
+    // AIGC START
     const newRecord: UrinationRecord = {
       ...record,
       id: generateId(),
@@ -106,46 +107,52 @@ export const urinationService = {
     }
     await db.urinationRecords.add(newRecord)
 
-    // 更新周期的总尿量
-    const cycle = await cycleService.getById(record.cycleId)
-    if (cycle) {
-      const totalVolume = cycle.urinationRecords.reduce((sum, r) => sum + r.volume, 0) + record.volume
-      await cycleService.update(record.cycleId, { totalVolume })
-    }
+    // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
+    const allRecords = await db.urinationRecords
+      .where('cycleId')
+      .equals(record.cycleId)
+      .toArray()
+    const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+    await cycleService.update(record.cycleId, { totalVolume })
+    // AIGC END
 
     return newRecord
   },
 
   // 更新排尿记录
   async update(id: string, updates: Partial<UrinationRecord>): Promise<void> {
+    // AIGC START
     await db.urinationRecords.update(id, updates)
 
-    // 更新周期的总尿量
+    // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
     const record = await db.urinationRecords.get(id)
     if (record) {
-      const cycle = await cycleService.getById(record.cycleId)
-      if (cycle) {
-        const totalVolume = cycle.urinationRecords.reduce((sum, r) => sum + r.volume, 0)
-        await cycleService.update(record.cycleId, { totalVolume })
-      }
+      const allRecords = await db.urinationRecords
+        .where('cycleId')
+        .equals(record.cycleId)
+        .toArray()
+      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+      await cycleService.update(record.cycleId, { totalVolume })
     }
+    // AIGC END
   },
 
   // 删除排尿记录
   async delete(id: string): Promise<void> {
+    // AIGC START
     const record = await db.urinationRecords.get(id)
     if (record) {
       await db.urinationRecords.delete(id)
 
-      // 更新周期的总尿量
-      const cycle = await cycleService.getById(record.cycleId)
-      if (cycle) {
-        const totalVolume = cycle.urinationRecords
-          .filter((r) => r.id !== id)
-          .reduce((sum, r) => sum + r.volume, 0)
-        await cycleService.update(record.cycleId, { totalVolume })
-      }
+      // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
+      const allRecords = await db.urinationRecords
+        .where('cycleId')
+        .equals(record.cycleId)
+        .toArray()
+      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+      await cycleService.update(record.cycleId, { totalVolume })
     }
+    // AIGC END
   },
 }
 
