@@ -1,4 +1,3 @@
-// AIGC START
 import { SpinLoading } from 'antd-mobile'
 
 interface LoadingProps {
@@ -9,6 +8,8 @@ interface LoadingProps {
 const Loading = ({ text = '加载中...', fullScreen = false }: LoadingProps) => {
   const content = (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -47,5 +48,4 @@ const Loading = ({ text = '加载中...', fullScreen = false }: LoadingProps) =>
 }
 
 export default Loading
-// AIGC END
 

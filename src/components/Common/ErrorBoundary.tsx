@@ -1,4 +1,3 @@
-// AIGC START
 import { Component, ErrorInfo, ReactNode } from 'react'
 import { Card, Button } from 'antd-mobile'
 
@@ -19,6 +18,16 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidMount() {
+    // 全局未捕获错误上报
+    window.onerror = (_msg, _url, _line, _col, error) => {
+      console.error('Global error:', error)
+    }
+    window.onunhandledrejection = (event) => {
+      console.error('Unhandled promise rejection:', event.reason)
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -55,5 +64,4 @@ class ErrorBoundary extends Component<Props, State> {
 }
 
 export default ErrorBoundary
-// AIGC END
 

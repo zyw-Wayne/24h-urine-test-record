@@ -9,7 +9,7 @@ export const exportToExcel = async (): Promise<void> => {
   const cycles = await cycleService.getAll()
 
   // 准备数据
-  const data: any[] = []
+  const data: Record<string, string | number>[] = []
 
   cycles.forEach((cycle) => {
     // 周期基本信息

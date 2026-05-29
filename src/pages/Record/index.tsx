@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Card,
   Button,
@@ -16,13 +16,23 @@ import {
 import dayjs from 'dayjs'
 import type { TestCycle, TestResult } from '@/types'
 import { cycleService, urinationService } from '@/services/db'
-import { formatDateTime, getRemainingTime, calculateProteinTotal24h } from '@/utils'
+import { formatDateTime, calculateProteinTotal24h } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
-import { NORMAL_RANGES, CYCLE_DURATION } from '@/constants'
+import { CYCLE_DURATION, URINE_ROUTINE_OPTIONS } from '@/constants'
 import { configService } from '@/services/db'
 import type { UserConfig } from '@/types'
 import Loading from '@/components/Common/Loading'
 import EmptyState from '@/components/Common/EmptyState'
+import TimerDisplay from '@/components/Common/TimerDisplay'
+
+// 检查检测值是否超出正常范围（纯函数，不依赖组件状态）
+const isAbnormal = (value: number, min: number, max: number): boolean => {
+  return value < min || value > max
+}
+
+// 异常值前缀图标（色盲用户也可识别）
+const warnIf = (cond: boolean, value: string | number): string =>
+  cond ? `⚠️ ${value}` : String(value)
 
 const RecordPage = () => {
   const [currentCycle, setCurrentCycle] = useState<TestCycle | null>(null)
@@ -31,7 +41,6 @@ const RecordPage = () => {
   const [initialLoading, setInitialLoading] = useState(true)
   const [urinationFormVisible, setUrinationFormVisible] = useState(false)
   const [testResultFormVisible, setTestResultFormVisible] = useState(false)
-  const [remainingTime, setRemainingTime] = useState({ hours: 0, minutes: 0, seconds: 0 })
   const [urinationForm] = Form.useForm()
   const [testResultForm] = Form.useForm()
 
@@ -50,20 +59,6 @@ const RecordPage = () => {
     loadData()
   }, [])
 
-  // 更新剩余时间
-  useEffect(() => {
-    if (currentCycle?.status === 'ongoing') {
-      const timer = setInterval(() => {
-        const time = getRemainingTime(currentCycle.startTime)
-        setRemainingTime(time)
-      }, 1000)
-      return () => clearInterval(timer)
-    } else {
-      // 如果周期已完成，重置剩余时间
-      setRemainingTime({ hours: 0, minutes: 0, seconds: 0 })
-    }
-  }, [currentCycle])
-
   const loadCurrentCycle = async () => {
     try {
       // 优先获取进行中的周期，如果没有则获取最新的周期（包括已完成的）
@@ -74,10 +69,6 @@ const RecordPage = () => {
         cycle = allCycles[0] || null
       }
       setCurrentCycle(cycle)
-      if (cycle && cycle.status === 'ongoing') {
-        const time = getRemainingTime(cycle.startTime)
-        setRemainingTime(time)
-      }
     } catch (error) {
       Toast.show({ content: '加载数据失败', icon: 'fail' })
     }
@@ -251,7 +242,11 @@ const RecordPage = () => {
 
     setLoading(true)
     try {
-      const proteinTotal24h = calculateProteinTotal24h(values.protein24hQuantitative, currentCycle.totalVolume)
+      const proteinTotal24h = calculateProteinTotal24h(
+        values.protein24hQuantitative,
+        currentCycle.totalVolume,
+        userConfig?.unit.volume || 'ml'
+      )
       const testResult: TestResult = {
         ...values,
         proteinTotal24h,
@@ -272,25 +267,20 @@ const RecordPage = () => {
     }
   }
 
-  // 计算进度
-  const getProgress = () => {
+  // 计算进度（useMemo 避免每秒重渲染时重复计算）
+  const progress = useMemo(() => {
     if (!currentCycle) return 0
     const start = dayjs(currentCycle.startTime)
     const now = dayjs()
     const elapsed = now.diff(start)
     return Math.min((elapsed / CYCLE_DURATION) * 100, 100)
-  }
+  }, [currentCycle?.startTime])
 
   // 计算平均尿量
-  const getAverageVolume = () => {
+  const averageVolume = useMemo(() => {
     if (!currentCycle || currentCycle.urinationRecords.length === 0) return 0
     return Math.round(currentCycle.totalVolume / currentCycle.urinationRecords.length)
-  }
-
-  // 检查异常值
-  const isAbnormal = (value: number, min: number, max: number): boolean => {
-    return value < min || value > max
-  }
+  }, [currentCycle?.totalVolume, currentCycle?.urinationRecords.length])
 
   // 获取正常值范围（根据用户性别）
   const normalRanges = getNormalRanges(userConfig || undefined)
@@ -360,11 +350,9 @@ const RecordPage = () => {
                   <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
                     剩余时间
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                    {remainingTime.hours}小时 {remainingTime.minutes}分钟 {remainingTime.seconds}秒
-                  </div>
+                  <TimerDisplay startTime={currentCycle.startTime} />
                 </div>
-                <ProgressBar percent={getProgress()} style={{ marginTop: '16px' }} />
+                <ProgressBar percent={progress} style={{ marginTop: '16px' }} />
                 <Button
                   color="danger"
                   size="small"
@@ -407,7 +395,7 @@ const RecordPage = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>平均每次尿量:</span>
-              <span style={{ fontWeight: 'bold' }}>{getAverageVolume()} ml</span>
+              <span style={{ fontWeight: 'bold' }}>{averageVolume} ml</span>
             </div>
             {currentCycle.testResults && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -418,13 +406,16 @@ const RecordPage = () => {
                     color: isAbnormal(
                       currentCycle.testResults.proteinTotal24h! * 1000,
                       0,
-                      NORMAL_RANGES.PROTEIN_24H
+                      normalRanges.protein24h
                     )
                       ? 'red'
                       : 'inherit',
                   }}
                 >
-                  {currentCycle.testResults.proteinTotal24h?.toFixed(2)} g
+                  {warnIf(
+                    isAbnormal(currentCycle.testResults.proteinTotal24h! * 1000, 0, normalRanges.protein24h),
+                    `${currentCycle.testResults.proteinTotal24h?.toFixed(2)} g`
+                  )}
                 </span>
               </div>
             )}
@@ -520,7 +511,10 @@ const RecordPage = () => {
                         : 'inherit',
                     }}
                     >
-                      {currentCycle.testResults.proteinTotal24h.toFixed(2)} g
+                      {warnIf(
+                        isAbnormal(currentCycle.testResults.proteinTotal24h * 1000, 0, normalRanges.protein24h),
+                        `${currentCycle.testResults.proteinTotal24h.toFixed(2)} g`
+                      )}
                     </span>
                     )
                   </span>
@@ -549,7 +543,10 @@ const RecordPage = () => {
                       : 'inherit',
                   }}
                 >
-                  {currentCycle.testResults.creatinine} μmol/L
+                  {warnIf(
+                    isAbnormal(currentCycle.testResults.creatinine, normalRanges.creatinine.min, normalRanges.creatinine.max),
+                    `${currentCycle.testResults.creatinine} μmol/L`
+                  )}
                 </span>
               </div>
               <div>
@@ -565,7 +562,10 @@ const RecordPage = () => {
                       : 'inherit',
                   }}
                 >
-                  {currentCycle.testResults.specificGravity}
+                  {warnIf(
+                    isAbnormal(currentCycle.testResults.specificGravity, normalRanges.specificGravity.min, normalRanges.specificGravity.max),
+                    `${currentCycle.testResults.specificGravity}`
+                  )}
                 </span>
               </div>
               <div>
@@ -581,7 +581,10 @@ const RecordPage = () => {
                       : 'inherit',
                   }}
                 >
-                  {currentCycle.testResults.ph}
+                  {warnIf(
+                    isAbnormal(currentCycle.testResults.ph, normalRanges.ph.min, normalRanges.ph.max),
+                    `${currentCycle.testResults.ph}`
+                  )}
                 </span>
               </div>
               <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
@@ -695,38 +698,14 @@ const RecordPage = () => {
               label="尿常规-尿蛋白"
               rules={[{ required: false }]}
             >
-              <Selector
-                options={[
-                  { label: '阴性(-)', value: '阴性(-)' },
-                  { label: '弱阳性(±)', value: '弱阳性(±)' },
-                  { label: '1+', value: '1+' },
-                  { label: '2+', value: '2+' },
-                  { label: '3+', value: '3+' },
-                  { label: '4+', value: '4+' },
-                  { label: '++', value: '++' },
-                  { label: '+++', value: '+++' },
-                  { label: '++++', value: '++++' },
-                ]}
-              />
+              <Selector options={URINE_ROUTINE_OPTIONS} />
             </Form.Item>
             <Form.Item
               name="occultBlood"
               label="尿常规-潜血"
               rules={[{ required: false }]}
             >
-              <Selector
-                options={[
-                  { label: '阴性(-)', value: '阴性(-)' },
-                  { label: '弱阳性(±)', value: '弱阳性(±)' },
-                  { label: '1+', value: '1+' },
-                  { label: '2+', value: '2+' },
-                  { label: '3+', value: '3+' },
-                  { label: '4+', value: '4+' },
-                  { label: '++', value: '++' },
-                  { label: '+++', value: '+++' },
-                  { label: '++++', value: '++++' },
-                ]}
-              />
+              <Selector options={URINE_ROUTINE_OPTIONS} />
             </Form.Item>
             <Form.Item
               name="creatinine"

@@ -1,4 +1,3 @@
-// AIGC START
 // 正常值范围工具函数
 import type { UserConfig } from '@/types'
 import { NORMAL_RANGES_COMMON, NORMAL_RANGES_CREATININE } from '@/constants'
@@ -36,5 +35,4 @@ export const getNormalRanges = (config?: UserConfig) => {
     },
   }
 }
-// AIGC END
 

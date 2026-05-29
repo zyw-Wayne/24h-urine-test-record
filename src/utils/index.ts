@@ -1,4 +1,3 @@
-// AIGC START
 // 工具函数
 import dayjs from 'dayjs'
 
@@ -30,30 +29,21 @@ export const getRemainingTime = (startTime: string): { hours: number; minutes: n
   return { hours, minutes, seconds }
 }
 
-// 生成唯一ID
+// 生成唯一ID（使用 Crypto API，比 Math.random 更安全且无冲突）
 export const generateId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
-
-// 格式化文件大小
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
-}
-
-// 验证数值范围
-export const validateRange = (value: number, min: number, max: number): boolean => {
-  return value >= min && value <= max
+  return crypto.randomUUID()
 }
 
 // 计算24小时总蛋白
-export const calculateProteinTotal24h = (protein: number, totalVolume: number): number => {
+export const calculateProteinTotal24h = (
+  protein: number,
+  totalVolume: number,
+  volumeUnit: 'ml' | 'l' = 'ml',
+): number => {
+  // 统一转换为 ml
+  const volumeMl = volumeUnit === 'l' ? totalVolume * 1000 : totalVolume
   // 尿蛋白浓度(mg/L) * 总尿量(L) = 总蛋白(mg)
   // 转换为g: 总蛋白(mg) / 1000
-  return (protein * totalVolume) / 1000 / 1000 // mg/L * ml / 1000 / 1000 = g
+  return (protein * volumeMl) / 1000 / 1000 // mg/L * ml / 1000 / 1000 = g
 }
-// AIGC END
 

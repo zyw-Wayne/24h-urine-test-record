@@ -12,6 +12,15 @@ interface HistoryDetailProps {
   onUpdate: () => void
 }
 
+// 检查检测值是否超出正常范围（纯函数）
+const isAbnormal = (value: number, min: number, max: number): boolean => {
+  return value < min || value > max
+}
+
+// 异常值前缀图标
+const warnIf = (cond: boolean, value: string | number): string =>
+  cond ? `⚠️ ${value}` : String(value)
+
 const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
   const [currentCycle, setCurrentCycle] = useState<TestCycle>(cycle)
@@ -64,10 +73,6 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
     }
   }
 
-  const isAbnormal = (value: number, min: number, max: number): boolean => {
-    return value < min || value > max
-  }
-
   const normalRanges = getNormalRanges(userConfig || undefined)
 
   return (
@@ -84,18 +89,18 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
         <Space direction="vertical" style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>开始时间:</span>
-            <span>{formatDateTime(cycle.startTime)}</span>
+            <span>{formatDateTime(currentCycle.startTime)}</span>
           </div>
-          {cycle.endTime && (
+          {currentCycle.endTime && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>结束时间:</span>
-              <span>{formatDateTime(cycle.endTime)}</span>
+              <span>{formatDateTime(currentCycle.endTime)}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>状态:</span>
             <span>
-              {cycle.status === 'ongoing' ? '进行中' : cycle.status === 'manual' ? '手动录入' : '已完成'}
+              {currentCycle.status === 'ongoing' ? '进行中' : currentCycle.status === 'manual' ? '手动录入' : '已完成'}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -132,7 +137,10 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
                       : 'inherit',
                   }}
                 >
-                  {currentCycle.testResults.proteinTotal24h.toFixed(2)} g
+                  {warnIf(
+                    isAbnormal(currentCycle.testResults.proteinTotal24h * 1000, 0, normalRanges.protein24h),
+                    `${currentCycle.testResults.proteinTotal24h.toFixed(2)} g`
+                  )}
                 </span>
               </div>
             )}
@@ -161,7 +169,10 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
                     : 'inherit',
                 }}
               >
-                {currentCycle.testResults.creatinine} μmol/L
+                {warnIf(
+                  isAbnormal(currentCycle.testResults.creatinine, normalRanges.creatinine.min, normalRanges.creatinine.max),
+                  `${currentCycle.testResults.creatinine} μmol/L`
+                )}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -177,7 +188,10 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
                     : 'inherit',
                 }}
               >
-                {currentCycle.testResults.specificGravity}
+                {warnIf(
+                  isAbnormal(currentCycle.testResults.specificGravity, normalRanges.specificGravity.min, normalRanges.specificGravity.max),
+                  `${currentCycle.testResults.specificGravity}`
+                )}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -193,7 +207,10 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
                     : 'inherit',
                 }}
               >
-                {currentCycle.testResults.ph}
+                {warnIf(
+                  isAbnormal(currentCycle.testResults.ph, normalRanges.ph.min, normalRanges.ph.max),
+                  `${currentCycle.testResults.ph}`
+                )}
               </span>
             </div>
             <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>

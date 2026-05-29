@@ -35,18 +35,16 @@ const ProfilePage = () => {
       }
     } catch (error) {
       console.error('加载配置失败', error)
+      Toast.show({ content: '加载配置失败', icon: 'fail' })
     }
   }
 
-  // 当弹窗打开时，确保表单值已设置（因为 initialValues 只在首次渲染时生效）
+  // 弹窗关闭再打开时刷新表单值（通过 key 触发 Form 重建）
   useEffect(() => {
     if (configFormVisible && config) {
-      // 使用 setTimeout 确保 Form 已经渲染
-      setTimeout(() => {
-        configForm.setFieldsValue(config)
-      }, 0)
+      configForm.setFieldsValue(config)
     }
-  }, [configFormVisible, config, configForm])
+  }, [configFormVisible, config])
 
   const handleSaveConfig = async (values: UserConfig) => {
     setLoading(true)

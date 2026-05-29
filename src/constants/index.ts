@@ -1,4 +1,3 @@
-// AIGC START
 // 常量定义
 
 // 正常值范围（不区分性别）
@@ -37,9 +36,6 @@ export const NORMAL_RANGES = {
 export const CYCLE_DURATION = 24 * 60 * 60 * 1000 // 24小时
 
 // 数据库名称
-export const DB_NAME = 'UrineTestDB'
-export const DB_VERSION = 1
-
 // 默认用户配置
 export const DEFAULT_USER_CONFIG = {
   nickname: '用户',
@@ -52,5 +48,59 @@ export const DEFAULT_USER_CONFIG = {
 
 // 备份文件版本
 export const BACKUP_VERSION = '1.0.0'
-// AIGC END
+
+// --- 尿常规值映射（字符串 ↔ 数值，供图表使用） ---
+
+// 尿常规字符串 → 数值
+export const ROUTINE_STRING_TO_VALUE: Record<string, number> = {
+  '阴性(-)': 0,
+  '阴性': 0,
+  '-': 0,
+  '弱阳性(±)': 0.5,
+  '弱阳性': 0.5,
+  '±': 0.5,
+  '1+': 1,
+  '++': 1,
+  '2+': 2,
+  '+++': 2,
+  '3+': 3,
+  '++++': 3,
+  '4+': 4,
+}
+
+// 数值 → 显示标签
+export const ROUTINE_VALUE_TO_LABEL: Record<number, string> = {
+  0: '阴性(-)',
+  0.5: '弱阳性(±)',
+  1: '1+/++',
+  2: '2+/+++',
+  3: '3+/++++',
+  4: '4+',
+}
+
+// Selector 选项（供尿常规-尿蛋白/潜血表单使用）
+export const URINE_ROUTINE_OPTIONS = [
+  { label: '阴性(-)', value: '阴性(-)' },
+  { label: '弱阳性(±)', value: '弱阳性(±)' },
+  { label: '1+', value: '1+' },
+  { label: '2+', value: '2+' },
+  { label: '3+', value: '3+' },
+  { label: '4+', value: '4+' },
+  { label: '++', value: '++' },
+  { label: '+++', value: '+++' },
+  { label: '++++', value: '++++' },
+]
+
+// 将尿常规字符串转为图表数值
+export const convertRoutineValue = (value: string | undefined): number | null => {
+  if (!value) return null
+  const normalized = String(value).trim()
+  const result = ROUTINE_STRING_TO_VALUE[normalized]
+  return result !== undefined ? result : null
+}
+
+// 将图表数值转为显示标签
+export const getRoutineLabel = (value: number | null): string => {
+  return value !== null ? ROUTINE_VALUE_TO_LABEL[value] || '' : '无数据'
+}
 

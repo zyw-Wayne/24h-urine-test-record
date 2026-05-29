@@ -1,4 +1,3 @@
-// AIGC START
 // IndexedDB数据库操作
 import Dexie, { Table } from 'dexie'
 import type { TestCycle, UrinationRecord, UserConfig } from '@/types'
@@ -25,13 +24,37 @@ const db = new UrineTestDatabase()
 export const cycleService = {
   // 获取所有检测周期
   async getAll(): Promise<TestCycle[]> {
-    const cycles = await db.testCycles.orderBy('createdAt').reverse().toArray()
-    // 加载每个周期的排尿记录
+    return this._batchLoadRecords(
+      await db.testCycles.orderBy('createdAt').reverse().toArray()
+    )
+  },
+
+  // 获取指定时间范围之后的检测周期（在数据库侧过滤，避免拉取全量数据）
+  async getByTimeRange(since: string): Promise<TestCycle[]> {
+    return this._batchLoadRecords(
+      await db.testCycles.where('createdAt').above(since).reverse().toArray()
+    )
+  },
+
+  // 内部：批量加载排尿记录并赋值给周期列表（复用逻辑）
+  async _batchLoadRecords(cycles: TestCycle[]): Promise<TestCycle[]> {
+    if (cycles.length === 0) return cycles
+
+    const cycleIds = cycles.map(c => c.id)
+    const allRecords = await db.urinationRecords
+      .where('cycleId')
+      .anyOf(cycleIds)
+      .sortBy('time')
+
+    const recordsByCycleId = new Map<string, UrinationRecord[]>()
+    for (const record of allRecords) {
+      const group = recordsByCycleId.get(record.cycleId) || []
+      group.push(record)
+      recordsByCycleId.set(record.cycleId, group)
+    }
+
     for (const cycle of cycles) {
-      cycle.urinationRecords = await db.urinationRecords
-        .where('cycleId')
-        .equals(cycle.id)
-        .sortBy('time')
+      cycle.urinationRecords = recordsByCycleId.get(cycle.id) || []
     }
     return cycles
   },
@@ -63,13 +86,17 @@ export const cycleService = {
   // 创建新的检测周期
   async create(cycle: Omit<TestCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<TestCycle> {
     const now = new Date().toISOString()
+    const { urinationRecords, ...cycleData } = cycle
     const newCycle: TestCycle = {
-      ...cycle,
+      ...cycleData,
       id: generateId(),
       createdAt: now,
       updatedAt: now,
+      urinationRecords: [],
     }
-    await db.testCycles.add(newCycle)
+    // 写入 IndexedDB 时排除 urinationRecords（运行时字段，不持久化）
+    const { urinationRecords: _, ...rest } = newCycle
+    await db.testCycles.add(rest as TestCycle)
     return newCycle
   },
 
@@ -99,60 +126,70 @@ export const cycleService = {
 export const urinationService = {
   // 添加排尿记录
   async add(record: Omit<UrinationRecord, 'id' | 'createdAt'>): Promise<UrinationRecord> {
-    // AIGC START
     const newRecord: UrinationRecord = {
       ...record,
       id: generateId(),
       createdAt: new Date().toISOString(),
     }
-    await db.urinationRecords.add(newRecord)
 
-    // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
-    const allRecords = await db.urinationRecords
-      .where('cycleId')
-      .equals(record.cycleId)
-      .toArray()
-    const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
-    await cycleService.update(record.cycleId, { totalVolume })
-    // AIGC END
+    // 使用 Dexie 事务包裹写+读+更新，防止并发写入时总尿量被陈旧值覆盖
+    await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
+      await db.urinationRecords.add(newRecord)
+
+      const allRecords = await db.urinationRecords
+        .where('cycleId')
+        .equals(record.cycleId)
+        .toArray()
+      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+      await db.testCycles.update(record.cycleId, {
+        totalVolume,
+        updatedAt: new Date().toISOString(),
+      })
+    })
 
     return newRecord
   },
 
   // 更新排尿记录
   async update(id: string, updates: Partial<UrinationRecord>): Promise<void> {
-    // AIGC START
-    await db.urinationRecords.update(id, updates)
+    // 使用事务保证原子性
+    await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
+      await db.urinationRecords.update(id, updates)
 
-    // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
-    const record = await db.urinationRecords.get(id)
-    if (record) {
-      const allRecords = await db.urinationRecords
-        .where('cycleId')
-        .equals(record.cycleId)
-        .toArray()
-      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
-      await cycleService.update(record.cycleId, { totalVolume })
-    }
-    // AIGC END
+      const record = await db.urinationRecords.get(id)
+      if (record) {
+        const allRecords = await db.urinationRecords
+          .where('cycleId')
+          .equals(record.cycleId)
+          .toArray()
+        const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+        await db.testCycles.update(record.cycleId, {
+          totalVolume,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+    })
   },
 
   // 删除排尿记录
   async delete(id: string): Promise<void> {
-    // AIGC START
-    const record = await db.urinationRecords.get(id)
-    if (record) {
-      await db.urinationRecords.delete(id)
+    // 使用事务保证原子性
+    await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
+      const record = await db.urinationRecords.get(id)
+      if (record) {
+        await db.urinationRecords.delete(id)
 
-      // 更新周期的总尿量：从数据库重新读取该周期下的所有记录并计算总和
-      const allRecords = await db.urinationRecords
-        .where('cycleId')
-        .equals(record.cycleId)
-        .toArray()
-      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
-      await cycleService.update(record.cycleId, { totalVolume })
-    }
-    // AIGC END
+        const allRecords = await db.urinationRecords
+          .where('cycleId')
+          .equals(record.cycleId)
+          .toArray()
+        const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+        await db.testCycles.update(record.cycleId, {
+          totalVolume,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+    })
   },
 }
 
@@ -172,7 +209,8 @@ export const configService = {
   async save(config: UserConfig): Promise<void> {
     const existing = await db.userConfig.toCollection().first()
     if (existing) {
-      await db.userConfig.update('default', config)
+      // 使用实际主键更新，而非硬编码 'default'
+      await db.userConfig.update((existing as UserConfig & { id: string }).id, config)
     } else {
       await db.userConfig.add({ ...config, id: 'default' } as UserConfig & { id: string })
     }
@@ -180,5 +218,4 @@ export const configService = {
 }
 
 export default db
-// AIGC END
 

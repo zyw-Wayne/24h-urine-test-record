@@ -18,6 +18,7 @@ import type { TestCycle, UserConfig, TestResult } from '@/types'
 import { cycleService, configService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
+import { URINE_ROUTINE_OPTIONS } from '@/constants'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -40,16 +41,23 @@ const HistoryPage = () => {
     const loadData = async () => {
       const config = await configService.get()
       setUserConfig(config)
-      await loadCycles()
+      await loadCycles('all')
     }
     loadData()
   }, [])
 
-  const loadCycles = async () => {
+  // timeRange 变化时重新加载
+  useEffect(() => {
+    loadCycles(timeRange)
+  }, [timeRange])
+
+  const loadCycles = async (range?: string) => {
     setLoading(true)
     try {
-      const allCycles = await cycleService.getAll()
-      setCycles(allCycles)
+      const result = (range && range !== 'all')
+        ? await cycleService.getByTimeRange(dayjs().subtract(range === '3months' ? 3 : 6, 'month').toISOString())
+        : await cycleService.getAll()
+      setCycles(result)
     } catch (error) {
       Toast.show({ content: '加载历史记录失败', icon: 'fail' })
     } finally {
@@ -65,7 +73,7 @@ const HistoryPage = () => {
       setLoading(true)
       try {
         await cycleService.delete(id)
-        await loadCycles()
+        await loadCycles(timeRange)
         Toast.show({ content: '删除成功', icon: 'success' })
       } catch (error) {
         Toast.show({ content: '删除失败', icon: 'fail' })
@@ -130,7 +138,11 @@ const HistoryPage = () => {
       // 计算24小时总蛋白量（如果未手动输入）
       let proteinTotal24h = values.proteinTotal24h
       if (!proteinTotal24h && values.protein24hQuantitative && values.totalVolume) {
-        proteinTotal24h = calculateProteinTotal24h(values.protein24hQuantitative, values.totalVolume)
+        proteinTotal24h = calculateProteinTotal24h(
+          values.protein24hQuantitative,
+          values.totalVolume,
+          userConfig?.unit.volume || 'ml'
+        )
       }
 
       const testResult: TestResult = {
@@ -169,7 +181,7 @@ const HistoryPage = () => {
       setManualFormVisible(false)
       setEditingCycle(null)
       manualForm.resetFields()
-      await loadCycles()
+      await loadCycles(timeRange)
     } catch (error) {
       Toast.show({ content: editingCycle ? '更新失败' : '保存失败', icon: 'fail' })
     } finally {
@@ -177,15 +189,7 @@ const HistoryPage = () => {
     }
   }
 
-  // 过滤数据
-  const getFilteredCycles = () => {
-    if (timeRange === 'all') return cycles
-    const months = timeRange === '3months' ? 3 : 6
-    const cutoffDate = dayjs().subtract(months, 'month')
-    return cycles.filter((cycle) => dayjs(cycle.createdAt).isAfter(cutoffDate))
-  }
-
-  const filteredCycles = getFilteredCycles()
+  // cycles 已由 loadCycles 根据 timeRange 在服务端过滤
   const normalRanges = getNormalRanges(userConfig || undefined)
 
   return (
@@ -245,15 +249,15 @@ const HistoryPage = () => {
       </Card>
 
       {/* 历史记录列表 */}
-      {loading && filteredCycles.length === 0 ? (
+      {loading && cycles.length === 0 ? (
         <Loading text="加载历史记录..." />
-      ) : filteredCycles.length === 0 ? (
+      ) : cycles.length === 0 ? (
         <Card>
           <EmptyState description="暂无历史记录，去记录页面开始检测吧" />
         </Card>
       ) : (
         <List>
-          {filteredCycles.map((cycle) => (
+          {cycles.map((cycle) => (
             <List.Item
               key={cycle.id}
               onClick={() => handleViewDetail(cycle)}
@@ -351,7 +355,7 @@ const HistoryPage = () => {
         showCloseButton
         onClose={() => setChartVisible(false)}
       >
-        <HistoryChart cycles={filteredCycles} />
+        <HistoryChart cycles={cycles} />
       </Popup>
 
       {/* 手动录入表单弹窗 */}
@@ -439,13 +443,16 @@ const HistoryPage = () => {
                 placeholder="请输入总尿量" 
                 inputMode="decimal"
                 onChange={(value) => {
-                  // 自动计算24小时总蛋白量
-                  const protein24h = manualForm.getFieldValue('protein24hQuantitative')
-                  if (protein24h && value) {
-                    const calculated = calculateProteinTotal24h(Number(protein24h), Number(value))
-                    const currentProteinTotal = manualForm.getFieldValue('proteinTotal24h')
-                    // 只有当用户没有手动修改过时才自动计算
-                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(protein24h, manualForm.getFieldValue('totalVolume') || 0)) {
+                  // 用 getFieldsValue 一次性读取所有字段的快照，避免逐次 getFieldValue 读到旧值
+                  const fields = manualForm.getFieldsValue()
+                  const newVolume = Number(value)
+                  const oldVolume = Number(fields.totalVolume) || 0
+                  const protein24h = fields.protein24hQuantitative
+                  const currentProteinTotal = fields.proteinTotal24h
+                  if (protein24h && newVolume > 0) {
+                    const calculated = calculateProteinTotal24h(Number(protein24h), newVolume, userConfig?.unit.volume || 'ml')
+                    // 比较旧计算结果：若相等则用户未手动修改 proteinTotal
+                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(Number(protein24h), oldVolume, userConfig?.unit.volume || 'ml')) {
                       manualForm.setFieldsValue({ proteinTotal24h: calculated })
                     }
                   }
@@ -473,13 +480,15 @@ const HistoryPage = () => {
                 placeholder="请输入24H尿蛋白定量" 
                 inputMode="decimal"
                 onChange={(value) => {
-                  // 自动计算24小时总蛋白量
-                  const totalVolume = manualForm.getFieldValue('totalVolume')
-                  if (totalVolume && value) {
-                    const calculated = calculateProteinTotal24h(Number(value), Number(totalVolume))
-                    const currentProteinTotal = manualForm.getFieldValue('proteinTotal24h')
-                    // 只有当用户没有手动修改过时才自动计算
-                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(manualForm.getFieldValue('protein24hQuantitative') || 0, totalVolume)) {
+                  const fields = manualForm.getFieldsValue()
+                  const newProtein = Number(value)
+                  const oldProtein = Number(fields.protein24hQuantitative) || 0
+                  const totalVolume = Number(fields.totalVolume) || 0
+                  const currentProteinTotal = fields.proteinTotal24h
+                  if (totalVolume > 0 && newProtein >= 0) {
+                    const calculated = calculateProteinTotal24h(newProtein, totalVolume, userConfig?.unit.volume || 'ml')
+                    // 比较旧计算结果
+                    if (!currentProteinTotal || currentProteinTotal === calculateProteinTotal24h(oldProtein, totalVolume, userConfig?.unit.volume || 'ml')) {
                       manualForm.setFieldsValue({ proteinTotal24h: calculated })
                     }
                   }
@@ -515,38 +524,14 @@ const HistoryPage = () => {
               label="尿常规-尿蛋白"
               rules={[{ required: false }]}
             >
-              <Selector
-                options={[
-                  { label: '阴性(-)', value: '阴性(-)' },
-                  { label: '弱阳性(±)', value: '弱阳性(±)' },
-                  { label: '1+', value: '1+' },
-                  { label: '2+', value: '2+' },
-                  { label: '3+', value: '3+' },
-                  { label: '4+', value: '4+' },
-                  { label: '++', value: '++' },
-                  { label: '+++', value: '+++' },
-                  { label: '++++', value: '++++' },
-                ]}
-              />
+              <Selector options={URINE_ROUTINE_OPTIONS} />
             </Form.Item>
             <Form.Item
               name="occultBlood"
               label="尿常规-潜血"
               rules={[{ required: false }]}
             >
-              <Selector
-                options={[
-                  { label: '阴性(-)', value: '阴性(-)' },
-                  { label: '弱阳性(±)', value: '弱阳性(±)' },
-                  { label: '1+', value: '1+' },
-                  { label: '2+', value: '2+' },
-                  { label: '3+', value: '3+' },
-                  { label: '4+', value: '4+' },
-                  { label: '++', value: '++' },
-                  { label: '+++', value: '+++' },
-                  { label: '++++', value: '++++' },
-                ]}
-              />
+              <Selector options={URINE_ROUTINE_OPTIONS} />
             </Form.Item>
             <Form.Item
               name="creatinine"
