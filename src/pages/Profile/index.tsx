@@ -52,6 +52,8 @@ const ProfilePage = () => {
       await configService.save(values)
       setConfig(values)
       setConfigFormVisible(false)
+      // 同步更新深色主题
+      document.documentElement.setAttribute('data-prefers-color-scheme', values.theme)
       Toast.show({ content: '保存成功', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '保存失败', icon: 'fail' })
@@ -150,14 +152,14 @@ const ProfilePage = () => {
           >
             <div>
               <div style={{ fontWeight: 'bold' }}>昵称</div>
-              <div style={{ fontSize: '12px', color: '#999' }}>{config.nickname}</div>
+              <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>{config.nickname}</div>
             </div>
           </List.Item>
           {config.gender && (
             <List.Item>
               <div>
                 <div style={{ fontWeight: 'bold' }}>性别</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
+                <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
                   {config.gender === 'male' ? '男' : '女'}
                 </div>
               </div>
@@ -167,7 +169,7 @@ const ProfilePage = () => {
             <List.Item>
               <div>
                 <div style={{ fontWeight: 'bold' }}>年龄</div>
-                <div style={{ fontSize: '12px', color: '#999' }}>{config.age} 岁</div>
+                <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>{config.age} 岁</div>
               </div>
             </List.Item>
           )}
@@ -198,7 +200,7 @@ const ProfilePage = () => {
           <List.Item>
             <div>
               <div style={{ fontWeight: 'bold' }}>单位设置</div>
-              <div style={{ fontSize: '12px', color: '#999' }}>
+              <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
                 尿量: {config.unit.volume} | 蛋白: {config.unit.protein}
               </div>
             </div>
@@ -206,7 +208,7 @@ const ProfilePage = () => {
           <List.Item>
             <div>
               <div style={{ fontWeight: 'bold' }}>主题</div>
-              <div style={{ fontSize: '12px', color: '#999' }}>
+              <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
                 {config.theme === 'light' ? '浅色' : '深色'}
               </div>
             </div>
@@ -216,7 +218,7 @@ const ProfilePage = () => {
 
       {/* 使用说明 */}
       <Card title="使用说明">
-        <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#666' }}>
+        <div style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--adm-color-text-secondary)' }}>
           <div style={{ marginBottom: '12px' }}>
             <strong>检测流程：</strong>
             <ol style={{ marginTop: '8px', paddingLeft: '20px' }}>
@@ -249,9 +251,9 @@ const ProfilePage = () => {
 
       {/* 关于 */}
       <Card title="关于" style={{ marginTop: '16px' }}>
-        <div style={{ fontSize: '14px', color: '#666', textAlign: 'center' }}>
+        <div style={{ fontSize: '14px', color: 'var(--adm-color-text-secondary)', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>24小时尿蛋白检测记录系统</div>
-          <div style={{ fontSize: '12px', color: '#999' }}>Version 1.0.0</div>
+          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.0.0</div>
         </div>
       </Card>
 
@@ -261,7 +263,7 @@ const ProfilePage = () => {
         onMaskClick={() => setConfigFormVisible(false)}
         bodyStyle={{ 
           padding: '20px',
-          maxHeight: '90vh',
+          maxHeight: '90dvh',
           overflowY: 'auto',
           paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
           paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
@@ -283,7 +285,11 @@ const ProfilePage = () => {
           <Form.Item name="nickname" label="昵称" rules={[{ required: true, message: '请输入昵称' }]}>
             <Input placeholder="请输入昵称" />
           </Form.Item>
-          <Form.Item name="gender" label="性别">
+          <Form.Item
+            name="gender"
+            label="性别"
+            help="用于判断肌酐正常值范围（男: 53-106 μmol/L，女: 44-97 μmol/L）"
+          >
             <Selector
               options={[
                 { label: '男', value: 'male' },
@@ -291,6 +297,11 @@ const ProfilePage = () => {
               ]}
             />
           </Form.Item>
+          {config.gender && (
+            <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '-12px', marginBottom: '12px', textAlign: 'center' }}>
+              肌酐正常值参考：{config.gender === 'male' ? '53-106 μmol/L（男性）' : '44-97 μmol/L（女性）'}
+            </div>
+          )}
           <Form.Item name="age" label="年龄">
             <Input type="number" placeholder="请输入年龄" />
           </Form.Item>

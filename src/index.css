@@ -1,4 +1,3 @@
-/* AIGC START */
 * {
   margin: 0;
   padding: 0;
@@ -11,7 +10,7 @@ body {
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
+  background-color: var(--page-bg, #f5f5f5);
   /* 防止移动端双击缩放 */
   touch-action: manipulation;
 }
@@ -58,5 +57,63 @@ input, textarea {
   font-size: 16px; /* 防止iOS自动缩放 */
 }
 
+/* ── 主题变量 ── */
+/* antd-mobile 原生暗色通过 data-prefers-color-scheme='dark' 触发 (见 node_modules/antd-mobile/es/global/theme-dark.css) */
 
+:root {
+  --page-bg: #f5f5f5;
+  --tabbar-bg: #ffffff;
+  --loading-overlay: rgba(255, 255, 255, 0.9);
+}
 
+html[data-prefers-color-scheme='dark'] {
+  --page-bg: var(--adm-color-background-body);
+  --tabbar-bg: var(--adm-color-background);
+  --loading-overlay: rgba(0, 0, 0, 0.8);
+}
+
+html[data-prefers-color-scheme='dark'] body {
+  background-color: var(--page-bg);
+}
+
+/* 暗色下 Popup 内容区 */
+html[data-prefers-color-scheme='dark'] .adm-popup-body {
+  background-color: var(--adm-color-background);
+}
+
+html[data-prefers-color-scheme='dark'] .adm-popup-close-icon {
+  color: var(--adm-color-text-secondary);
+}
+
+/* 暗色下 Picker/DatePicker */
+html[data-prefers-color-scheme='dark'] .adm-picker-header {
+  border-bottom-color: var(--adm-color-border);
+}
+
+html[data-prefers-color-scheme='dark'] .adm-picker-header-button {
+  color: var(--adm-color-primary);
+}
+
+/* 暗色下 CascadePicker 确认/取消按钮 */
+html[data-prefers-color-scheme='dark'] .adm-cascader-view-header {
+  border-bottom-color: var(--adm-color-border);
+}
+
+/* 暗色下手动录入标签 */
+html[data-prefers-color-scheme='dark'] .manual-badge {
+  background-color: #2a2a4a !important;
+  color: #7ec8ff !important;
+}
+
+/* 暗色下滚动条 */
+html[data-prefers-color-scheme='dark'] ::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+html[data-prefers-color-scheme='dark'] ::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+html[data-prefers-color-scheme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}

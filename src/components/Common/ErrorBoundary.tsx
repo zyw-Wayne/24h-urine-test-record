@@ -11,6 +11,9 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
+  private _prevOnError: typeof window.onerror = null
+  private _prevOnRejection: typeof window.onunhandledrejection = null
+
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false }
@@ -21,13 +24,19 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidMount() {
-    // 全局未捕获错误上报
+    this._prevOnError = window.onerror
+    this._prevOnRejection = window.onunhandledrejection
     window.onerror = (_msg, _url, _line, _col, error) => {
       console.error('Global error:', error)
     }
     window.onunhandledrejection = (event) => {
       console.error('Unhandled promise rejection:', event.reason)
     }
+  }
+
+  componentWillUnmount() {
+    window.onerror = this._prevOnError
+    window.onunhandledrejection = this._prevOnRejection
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -47,7 +56,7 @@ class ErrorBoundary extends Component<Props, State> {
               <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>
                 出现错误
               </div>
-              <div style={{ color: '#999', marginBottom: '20px', fontSize: '14px' }}>
+              <div style={{ color: 'var(--adm-color-weak)', marginBottom: '20px', fontSize: '14px' }}>
                 {this.state.error?.message || '未知错误'}
               </div>
               <Button color="primary" onClick={this.handleReset}>

@@ -16,8 +16,8 @@ import {
 import dayjs from 'dayjs'
 import type { TestCycle, TestResult } from '@/types'
 import { cycleService, urinationService } from '@/services/db'
-import { formatDateTime, calculateProteinTotal24h } from '@/utils'
-import { getNormalRanges } from '@/utils/normalRanges'
+import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
+import { getNormalRanges, isAbnormal, warnIf } from '@/utils/normalRanges'
 import { CYCLE_DURATION, URINE_ROUTINE_OPTIONS } from '@/constants'
 import { configService } from '@/services/db'
 import type { UserConfig } from '@/types'
@@ -25,14 +25,7 @@ import Loading from '@/components/Common/Loading'
 import EmptyState from '@/components/Common/EmptyState'
 import TimerDisplay from '@/components/Common/TimerDisplay'
 
-// 检查检测值是否超出正常范围（纯函数，不依赖组件状态）
-const isAbnormal = (value: number, min: number, max: number): boolean => {
-  return value < min || value > max
-}
-
-// 异常值前缀图标（色盲用户也可识别）
-const warnIf = (cond: boolean, value: string | number): string =>
-  cond ? `⚠️ ${value}` : String(value)
+// 从 normalRanges 导入（isAbnormal/warnIf 见 utils/normalRanges.ts）
 
 const RecordPage = () => {
   const [currentCycle, setCurrentCycle] = useState<TestCycle | null>(null)
@@ -301,9 +294,9 @@ const RecordPage = () => {
             <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>
               24小时尿蛋白检测
             </div>
-            <div style={{ color: '#666', marginBottom: '24px', textAlign: 'center', lineHeight: '1.6' }}>
+            <div style={{ color: 'var(--adm-color-text-secondary)', marginBottom: '24px', textAlign: 'center', lineHeight: '1.6' }}>
               <div>点击下方按钮开始新的检测周期</div>
-              <div style={{ fontSize: '12px', marginTop: '8px', color: '#999' }}>
+              <div style={{ fontSize: '12px', marginTop: '8px', color: 'var(--adm-color-weak)' }}>
                 提示：首次排尿不收集，之后的所有尿液都需收集
               </div>
             </div>
@@ -333,7 +326,7 @@ const RecordPage = () => {
         title={
           <div>
             <div>{currentCycle.status === 'ongoing' ? '检测周期进行中' : '检测周期已完成'}</div>
-            <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '4px' }}>
               开始时间: {formatDateTime(currentCycle.startTime)}
               {currentCycle.endTime && (
                 <span> | 结束时间: {formatDateTime(currentCycle.endTime)}</span>
@@ -347,7 +340,7 @@ const RecordPage = () => {
             {currentCycle.status === 'ongoing' ? (
               <>
                 <div>
-                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '14px', color: 'var(--adm-color-text-secondary)', marginBottom: '8px' }}>
                     剩余时间
                   </div>
                   <TimerDisplay startTime={currentCycle.startTime} />
@@ -365,7 +358,7 @@ const RecordPage = () => {
               </>
             ) : (
               <>
-                <div style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                <div style={{ color: 'var(--adm-color-text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
                   检测周期已结束，您可以录入检测结果
                 </div>
                 <Button
@@ -391,11 +384,11 @@ const RecordPage = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>总尿量:</span>
-              <span style={{ fontWeight: 'bold' }}>{currentCycle.totalVolume} ml</span>
+              <span style={{ fontWeight: 'bold' }}>{formatVolume(currentCycle.totalVolume, userConfig?.unit.volume)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>平均每次尿量:</span>
-              <span style={{ fontWeight: 'bold' }}>{averageVolume} ml</span>
+              <span style={{ fontWeight: 'bold' }}>{formatVolume(averageVolume, userConfig?.unit.volume)}</span>
             </div>
             {currentCycle.testResults && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -438,7 +431,7 @@ const RecordPage = () => {
                 添加记录
               </Button>
             ) : (
-              <span style={{ fontSize: '12px', color: '#999' }}>周期已结束</span>
+              <span style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>周期已结束</span>
             )
           }
           style={{ marginBottom: '16px' }}
@@ -463,10 +456,10 @@ const RecordPage = () => {
                   }
                 >
                   <div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
-                      {record.volume} ml
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--adm-color-text)', marginBottom: '4px' }}>
+                      {formatVolume(record.volume, userConfig?.unit.volume)}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>{formatDateTime(record.time)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>{formatDateTime(record.time)}</div>
                   </div>
                 </List.Item>
               ))}
@@ -503,7 +496,7 @@ const RecordPage = () => {
                     <span
                     style={{
                       color: isAbnormal(
-                        currentCycle.testResults.proteinTotal24h * 1000,
+                        (currentCycle.testResults.proteinTotal24h ?? 0) * 1000,
                         0,
                         normalRanges.protein24h
                       )
@@ -512,7 +505,7 @@ const RecordPage = () => {
                     }}
                     >
                       {warnIf(
-                        isAbnormal(currentCycle.testResults.proteinTotal24h * 1000, 0, normalRanges.protein24h),
+                        isAbnormal((currentCycle.testResults.proteinTotal24h ?? 0) * 1000, 0, normalRanges.protein24h),
                         `${currentCycle.testResults.proteinTotal24h.toFixed(2)} g`
                       )}
                     </span>
@@ -587,7 +580,7 @@ const RecordPage = () => {
                   )}
                 </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '8px' }}>
                 检测时间: {formatDateTime(currentCycle.testResults.testedAt)}
               </div>
             </Space>
@@ -602,7 +595,7 @@ const RecordPage = () => {
           onMaskClick={() => setUrinationFormVisible(false)}
           bodyStyle={{ 
             padding: '20px',
-            maxHeight: '90vh',
+            maxHeight: '90dvh',
             overflowY: 'auto',
             paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
             paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
@@ -657,7 +650,7 @@ const RecordPage = () => {
           onMaskClick={() => setTestResultFormVisible(false)}
           bodyStyle={{ 
             padding: '20px',
-            maxHeight: '90vh',
+            maxHeight: '90dvh',
             overflowY: 'auto',
             paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
             paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',

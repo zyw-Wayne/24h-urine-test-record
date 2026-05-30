@@ -29,9 +29,25 @@ export const getRemainingTime = (startTime: string): { hours: number; minutes: n
   return { hours, minutes, seconds }
 }
 
-// 生成唯一ID（使用 Crypto API，比 Math.random 更安全且无冲突）
+// 生成唯一ID（优先 Crypto API，HTTP 环境回退到 Math.random）
 export const generateId = (): string => {
-  return crypto.randomUUID()
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }
+}
+
+// 根据用户配置格式化尿量显示
+export const formatVolume = (ml: number, unit: 'ml' | 'l' = 'ml'): string => {
+  if (unit === 'l') return `${(ml / 1000).toFixed(2)} L`
+  return `${ml} ml`
+}
+
+// 根据用户配置格式化蛋白浓度
+export const formatProteinConcentration = (mgPerL: number, _unit: 'mg' | 'g' = 'mg'): string => {
+  // 输入值始终是 mg/L，显示单位切换不影响数值呈现方式
+  return `${mgPerL} mg/L`
 }
 
 // 计算24小时总蛋白

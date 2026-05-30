@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TabBar } from 'antd-mobile'
 import { FileOutline, UnorderedListOutline, UserOutline } from 'antd-mobile-icons'
-import { memo, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 interface LayoutProps {
   children: ReactNode
@@ -51,8 +51,8 @@ const LayoutBase = ({ children }: LayoutProps) => {
         right: 0,
         zIndex: 100,
         paddingBottom: 'env(safe-area-inset-bottom)',
-        backgroundColor: '#fff',
-        borderTop: '1px solid #f0f0f0',
+        backgroundColor: 'var(--adm-color-background)',
+        borderTop: '1px solid var(--adm-color-border)',
       }}>
         <TabBar activeKey={location.pathname} onChange={(key) => navigate(key)}>
           {tabs.map((item) => (
@@ -64,5 +64,5 @@ const LayoutBase = ({ children }: LayoutProps) => {
   )
 }
 
-export default memo(LayoutBase)
+export default LayoutBase
 

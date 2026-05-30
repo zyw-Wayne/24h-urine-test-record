@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Card,
   List,
@@ -16,7 +16,7 @@ import { DeleteOutline, AddOutline } from 'antd-mobile-icons'
 import dayjs from 'dayjs'
 import type { TestCycle, UserConfig, TestResult } from '@/types'
 import { cycleService, configService } from '@/services/db'
-import { formatDateTime, calculateProteinTotal24h } from '@/utils'
+import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import { URINE_ROUTINE_OPTIONS } from '@/constants'
 import HistoryDetail from './Detail'
@@ -27,6 +27,8 @@ import EmptyState from '@/components/Common/EmptyState'
 const HistoryPage = () => {
   const [cycles, setCycles] = useState<TestCycle[]>([])
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
+  const isMounted = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const [loading, setLoading] = useState(false)
   const [selectedCycle, setSelectedCycle] = useState<TestCycle | null>(null)
   const [detailVisible, setDetailVisible] = useState(false)
@@ -42,12 +44,14 @@ const HistoryPage = () => {
       const config = await configService.get()
       setUserConfig(config)
       await loadCycles('all')
+      isMounted.current = true
     }
     loadData()
   }, [])
 
-  // timeRange 变化时重新加载
+  // timeRange 变化时重新加载（跳过初始挂载时的重复触发）
   useEffect(() => {
+    if (!isMounted.current) return
     loadCycles(timeRange)
   }, [timeRange])
 
@@ -86,10 +90,10 @@ const HistoryPage = () => {
   const handleViewDetail = (cycle: TestCycle) => {
     // 如果是手动录入的记录，打开编辑表单
     if (cycle.status === 'manual') {
+      clearTimeout(timerRef.current)
       setEditingCycle(cycle)
       setManualFormVisible(true)
-      // 填充表单数据
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         const startTimeValue = new Date(cycle.startTime)
         manualForm.setFieldsValue({
           startTime: startTimeValue,
@@ -279,8 +283,8 @@ const HistoryPage = () => {
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                   {formatDateTime(cycle.startTime)}
                 </div>
-                <div style={{ fontSize: '12px', color: '#999' }}>
-                  总尿量: {cycle.totalVolume} ml | 排尿次数: {cycle.urinationRecords.length} 次
+                <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
+                  总尿量: {formatVolume(cycle.totalVolume, userConfig?.unit.volume)} | 排尿次数: {cycle.urinationRecords.length} 次
                   {cycle.testResults?.proteinTotal24h && (
                     <span>
                       {' '}
@@ -298,10 +302,10 @@ const HistoryPage = () => {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '4px' }}>
                   状态: {cycle.status === 'ongoing' ? '进行中' : cycle.status === 'manual' ? '手动录入' : '已完成'}
                   {cycle.status === 'manual' && (
-                    <span style={{ 
+                    <span className="manual-badge" style={{ 
                       marginLeft: '8px', 
                       padding: '2px 6px', 
                       backgroundColor: '#e6f7ff', 
@@ -324,7 +328,7 @@ const HistoryPage = () => {
         visible={detailVisible}
         onMaskClick={() => setDetailVisible(false)}
         bodyStyle={{ 
-          maxHeight: '90vh', 
+          maxHeight: '90dvh', 
           overflowY: 'auto',
           paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
           paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
@@ -346,7 +350,7 @@ const HistoryPage = () => {
         visible={chartVisible}
         onMaskClick={() => setChartVisible(false)}
         bodyStyle={{ 
-          maxHeight: '90vh', 
+          maxHeight: '90dvh', 
           overflowY: 'auto', 
           padding: '16px',
           paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
@@ -368,7 +372,7 @@ const HistoryPage = () => {
         }}
         bodyStyle={{ 
           padding: '20px',
-          maxHeight: '90vh',
+          maxHeight: '90dvh',
           overflowY: 'auto',
           paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
           paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
@@ -408,18 +412,18 @@ const HistoryPage = () => {
                 }}
                 style={{
                   padding: '8px 12px',
-                  border: '1px solid #e5e5e5',
+                  border: '1px solid var(--adm-color-border)',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   minHeight: '32px',
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#fff',
+                  backgroundColor: 'var(--adm-color-background)',
                 }}
               >
                 {startTime 
                   ? formatDateTime(startTime instanceof Date ? startTime : new Date(startTime))
-                  : <span style={{ color: '#999' }}>请选择时间</span>}
+                  : <span style={{ color: 'var(--adm-color-weak)' }}>请选择时间</span>}
               </div>
             </Form.Item>
             <Form.Item

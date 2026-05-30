@@ -181,7 +181,7 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
             {proteinRoutineChartData.datasets[0].data.some((v: number | null) => v !== null) ? (
               <Bar data={proteinRoutineChartData} options={routineChartOptions} />
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999', fontSize: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--adm-color-weak)', fontSize: '14px' }}>
                 暂无数据，请先录入检测结果中的"尿常规-尿蛋白"字段
               </div>
             )}
@@ -201,7 +201,7 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
             {occultBloodChartData.datasets[0].data.some((v: number | null) => v !== null) ? (
               <Bar data={occultBloodChartData} options={routineChartOptions} />
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999', fontSize: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--adm-color-weak)', fontSize: '14px' }}>
                 暂无数据，请先录入检测结果中的"尿常规-潜血"字段
               </div>
             )}

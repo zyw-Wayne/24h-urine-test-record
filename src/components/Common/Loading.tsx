@@ -19,7 +19,7 @@ const Loading = ({ text = '加载中...', fullScreen = false }: LoadingProps) =>
       }}
     >
       <SpinLoading style={{ '--size': '48px' }} />
-      {text && <div style={{ marginTop: '16px', color: '#999' }}>{text}</div>}
+      {text && <div style={{ marginTop: '16px', color: 'var(--adm-color-weak)' }}>{text}</div>}
     </div>
   )
 
@@ -35,7 +35,7 @@ const Loading = ({ text = '加载中...', fullScreen = false }: LoadingProps) =>
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: 'var(--loading-overlay)',
           zIndex: 9999,
         }}
       >

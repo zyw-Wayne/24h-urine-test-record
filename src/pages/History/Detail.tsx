@@ -1,8 +1,8 @@
 import { Button, Card, List, Space, Toast, Dialog } from 'antd-mobile'
 import { useState, useEffect } from 'react'
 import type { TestCycle, UserConfig } from '@/types'
-import { formatDateTime } from '@/utils'
-import { getNormalRanges } from '@/utils/normalRanges'
+import { formatDateTime, formatVolume } from '@/utils'
+import { getNormalRanges, isAbnormal, warnIf } from '@/utils/normalRanges'
 import { urinationService, configService, cycleService } from '@/services/db'
 import EmptyState from '@/components/Common/EmptyState'
 
@@ -12,14 +12,7 @@ interface HistoryDetailProps {
   onUpdate: () => void
 }
 
-// 检查检测值是否超出正常范围（纯函数）
-const isAbnormal = (value: number, min: number, max: number): boolean => {
-  return value < min || value > max
-}
-
-// 异常值前缀图标
-const warnIf = (cond: boolean, value: string | number): string =>
-  cond ? `⚠️ ${value}` : String(value)
+// isAbnormal/warnIf 从 utils/normalRanges 导入
 
 const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
@@ -105,7 +98,7 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>总尿量:</span>
-            <span style={{ fontWeight: 'bold' }}>{currentCycle.totalVolume} ml</span>
+            <span style={{ fontWeight: 'bold' }}>{formatVolume(currentCycle.totalVolume, userConfig?.unit.volume)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>排尿次数:</span>
@@ -213,7 +206,7 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
                 )}
               </span>
             </div>
-            <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '8px' }}>
               检测时间: {formatDateTime(currentCycle.testResults.testedAt)}
             </div>
           </Space>
@@ -230,20 +223,22 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
               <List.Item
                 key={record.id}
                 extra={
-                  <Button
-                    size="small"
-                    color="danger"
-                    onClick={() => handleDeleteUrination(record.id)}
-                  >
-                    删除
-                  </Button>
+                  currentCycle.status === 'ongoing' ? (
+                    <Button
+                      size="small"
+                      color="danger"
+                      onClick={() => handleDeleteUrination(record.id)}
+                    >
+                      删除
+                    </Button>
+                  ) : null
                 }
               >
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
-                    {record.volume} ml
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--adm-color-text)', marginBottom: '4px' }}>
+                    {formatVolume(record.volume, userConfig?.unit.volume)}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
                     第{index + 1}次 - {formatDateTime(record.time)}
                   </div>
                 </div>

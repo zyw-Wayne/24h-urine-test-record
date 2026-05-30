@@ -13,6 +13,14 @@ export const getCreatinineRange = (gender?: 'male' | 'female') => {
   return NORMAL_RANGES_CREATININE.FEMALE
 }
 
+// 检查检测值是否超出正常范围
+const isAbnormal = (value: number, min: number, max: number): boolean =>
+  value < min || value > max
+
+// 异常值前缀图标
+const warnIf = (cond: boolean, value: string | number): string =>
+  cond ? `⚠️ ${value}` : String(value)
+
 /**
  * 获取所有正常值范围（根据用户配置）
  */
@@ -35,4 +43,6 @@ export const getNormalRanges = (config?: UserConfig) => {
     },
   }
 }
+
+export { isAbnormal, warnIf }
 
