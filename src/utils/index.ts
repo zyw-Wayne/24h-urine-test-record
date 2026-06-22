@@ -63,3 +63,45 @@ export const calculateProteinTotal24h = (
   return (protein * volumeMl) / 1000 / 1000 // mg/L * ml / 1000 / 1000 = g
 }
 
+// --- 尿常规值映射（原 constants/index.ts，移至此处以便复用） ---
+
+// 尿常规字符串 → 数值
+const ROUTINE_STRING_TO_VALUE: Record<string, number> = {
+  '阴性(-)': 0,
+  '阴性': 0,
+  '-': 0,
+  '弱阳性(±)': 0.5,
+  '弱阳性': 0.5,
+  '±': 0.5,
+  '1+': 1,
+  '++': 1,
+  '2+': 2,
+  '+++': 2,
+  '3+': 3,
+  '++++': 3,
+  '4+': 4,
+}
+
+// 数值 → 显示标签
+export const ROUTINE_VALUE_TO_LABEL: Record<number, string> = {
+  0: '阴性(-)',
+  0.5: '弱阳性(±)',
+  1: '1+/++',
+  2: '2+/+++',
+  3: '3+/++++',
+  4: '4+',
+}
+
+// 将尿常规字符串转为图表数值
+export const convertRoutineValue = (value: string | undefined): number | null => {
+  if (!value) return null
+  const normalized = String(value).trim()
+  const result = ROUTINE_STRING_TO_VALUE[normalized]
+  return result !== undefined ? result : null
+}
+
+// 将图表数值转为显示标签
+export const getRoutineLabel = (value: number | null): string => {
+  return value !== null ? ROUTINE_VALUE_TO_LABEL[value] || '' : '无数据'
+}
+

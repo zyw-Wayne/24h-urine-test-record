@@ -63,9 +63,9 @@ export const importBackup = async (file: File): Promise<void> => {
               await db.urinationRecords.add(record)
             }
 
-            // 重新计算总尿量
-            const totalVolume = records.reduce((sum, r) => sum + r.volume, 0)
-            await db.testCycles.update(cycle.id, { totalVolume })
+            // 使用备份中原有的总尿量值，避免重复计算
+            // totalVolume 已在备份数据中保存，直接使用 cycle.totalVolume
+            await db.testCycles.update(cycle.id, { totalVolume: cycleData.totalVolume })
           }
         })
 

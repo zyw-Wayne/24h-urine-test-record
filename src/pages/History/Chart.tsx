@@ -15,7 +15,8 @@ import {
 } from 'chart.js'
 import type { TestCycle } from '@/types'
 import { formatDate } from '@/utils'
-import { convertRoutineValue, getRoutineLabel, ROUTINE_VALUE_TO_LABEL } from '@/constants'
+import { convertRoutineValue, getRoutineLabel, ROUTINE_VALUE_TO_LABEL } from '@/utils'
+import type { TooltipItem, Tick } from 'chart.js'
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -82,7 +83,7 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
         ...chartOptions.plugins,
         tooltip: {
           callbacks: {
-            label(context: any) {
+            label(context: TooltipItem<'bar'>) {
               const value = context.parsed.y
               return `${context.dataset.label}: ${getRoutineLabel(value)}`
             },
@@ -94,8 +95,9 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
           beginAtZero: true,
           ticks: {
             stepSize: 0.5,
-            callback(value: any) {
-              return ROUTINE_VALUE_TO_LABEL[value] || value
+            callback(value: number | string, _index: number, _ticks: Tick[]) {
+              const numValue = typeof value === 'number' ? value : Number(value)
+              return ROUTINE_VALUE_TO_LABEL[numValue] || value
             },
           },
         },

@@ -19,13 +19,14 @@ import { cycleService, urinationService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges, isAbnormal, warnIf } from '@/utils/normalRanges'
 import { CYCLE_DURATION, URINE_ROUTINE_OPTIONS } from '@/constants'
+import { volumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules } from '@/utils/validators'
 import { configService } from '@/services/db'
 import type { UserConfig } from '@/types'
 import Loading from '@/components/Common/Loading'
 import EmptyState from '@/components/Common/EmptyState'
 import TimerDisplay from '@/components/Common/TimerDisplay'
+import TestResultDisplay from '@/components/Common/TestResultDisplay'
 
-// 从 normalRanges 导入（isAbnormal/warnIf 见 utils/normalRanges.ts）
 
 const RecordPage = () => {
   const [currentCycle, setCurrentCycle] = useState<TestCycle | null>(null)
@@ -58,8 +59,7 @@ const RecordPage = () => {
       let cycle = await cycleService.getOngoing()
       if (!cycle) {
         // 如果没有进行中的周期，获取最新的周期（可能是已完成的）
-        const allCycles = await cycleService.getAll()
-        cycle = allCycles[0] || null
+        cycle = await cycleService.getLatest()
       }
       setCurrentCycle(cycle)
     } catch (error) {
@@ -486,104 +486,7 @@ const RecordPage = () => {
           }
         >
           {currentCycle.testResults ? (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <div>
-                24H尿蛋白定量: {currentCycle.testResults.protein24hQuantitative} mg/L
-                {currentCycle.testResults.proteinTotal24h && (
-                  <span>
-                    {' '}
-                    (24h总蛋白:{' '}
-                    <span
-                    style={{
-                      color: isAbnormal(
-                        (currentCycle.testResults.proteinTotal24h ?? 0) * 1000,
-                        0,
-                        normalRanges.protein24h
-                      )
-                        ? 'red'
-                        : 'inherit',
-                    }}
-                    >
-                      {warnIf(
-                        isAbnormal((currentCycle.testResults.proteinTotal24h ?? 0) * 1000, 0, normalRanges.protein24h),
-                        `${currentCycle.testResults.proteinTotal24h.toFixed(2)} g`
-                      )}
-                    </span>
-                    )
-                  </span>
-                )}
-              </div>
-              {currentCycle.testResults.proteinRoutine && (
-                <div>
-                  尿常规-尿蛋白: <span style={{ fontWeight: 'bold' }}>{currentCycle.testResults.proteinRoutine}</span>
-                </div>
-              )}
-              {currentCycle.testResults.occultBlood && (
-                <div>
-                  尿常规-潜血: <span style={{ fontWeight: 'bold' }}>{currentCycle.testResults.occultBlood}</span>
-                </div>
-              )}
-              <div>
-                肌酐:{' '}
-                <span
-                  style={{
-                    color: isAbnormal(
-                      currentCycle.testResults.creatinine,
-                      normalRanges.creatinine.min,
-                      normalRanges.creatinine.max
-                    )
-                      ? 'red'
-                      : 'inherit',
-                  }}
-                >
-                  {warnIf(
-                    isAbnormal(currentCycle.testResults.creatinine, normalRanges.creatinine.min, normalRanges.creatinine.max),
-                    `${currentCycle.testResults.creatinine} μmol/L`
-                  )}
-                </span>
-              </div>
-              <div>
-                尿比重:{' '}
-                <span
-                  style={{
-                    color: isAbnormal(
-                      currentCycle.testResults.specificGravity,
-                      normalRanges.specificGravity.min,
-                      normalRanges.specificGravity.max
-                    )
-                      ? 'red'
-                      : 'inherit',
-                  }}
-                >
-                  {warnIf(
-                    isAbnormal(currentCycle.testResults.specificGravity, normalRanges.specificGravity.min, normalRanges.specificGravity.max),
-                    `${currentCycle.testResults.specificGravity}`
-                  )}
-                </span>
-              </div>
-              <div>
-                pH值:{' '}
-                <span
-                  style={{
-                    color: isAbnormal(
-                      currentCycle.testResults.ph,
-                      normalRanges.ph.min,
-                      normalRanges.ph.max
-                    )
-                      ? 'red'
-                      : 'inherit',
-                  }}
-                >
-                  {warnIf(
-                    isAbnormal(currentCycle.testResults.ph, normalRanges.ph.min, normalRanges.ph.max),
-                    `${currentCycle.testResults.ph}`
-                  )}
-                </span>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '8px' }}>
-                检测时间: {formatDateTime(currentCycle.testResults.testedAt)}
-              </div>
-            </Space>
+            <TestResultDisplay testResults={currentCycle.testResults} userConfig={userConfig} />
           ) : (
             <EmptyState description="暂无检测结果，点击右上角录入" />
           )}
@@ -625,18 +528,7 @@ const RecordPage = () => {
             <Form.Item
               name="volume"
               label="尿量(ml)"
-              rules={[
-                { required: true, message: '请输入尿量' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) > 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('尿量必须大于0'))
-                  }
-                },
-              ]}
+              rules={volumeRules}
             >
               <Input type="number" placeholder="请输入尿量" inputMode="decimal" />
             </Form.Item>
@@ -671,18 +563,7 @@ const RecordPage = () => {
             <Form.Item
               name="protein24hQuantitative"
               label="24H尿蛋白定量(mg/L)"
-              rules={[
-                { required: true, message: '请输入24H尿蛋白定量' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) >= 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('24H尿蛋白定量不能为负数'))
-                  }
-                },
-              ]}
+              rules={protein24hRules}
             >
               <Input type="number" placeholder="请输入24H尿蛋白定量" inputMode="decimal" />
             </Form.Item>
@@ -703,56 +584,21 @@ const RecordPage = () => {
             <Form.Item
               name="creatinine"
               label="肌酐(μmol/L)"
-              rules={[
-                { required: true, message: '请输入肌酐' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) >= 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('肌酐不能为负数'))
-                  }
-                },
-              ]}
+              rules={creatinineRules}
             >
               <Input type="number" placeholder="请输入肌酐" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="specificGravity"
               label="尿比重"
-              rules={[
-                { required: true, message: '请输入尿比重' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    const num = Number(value)
-                    if (!value || (num >= 1.000 && num <= 1.050)) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('尿比重应在1.000-1.050之间'))
-                  }
-                },
-              ]}
+              rules={specificGravityRules}
             >
               <Input type="number" step="0.001" placeholder="请输入尿比重(1.000-1.050)" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="ph"
               label="pH值"
-              rules={[
-                { required: true, message: '请输入pH值' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    const num = Number(value)
-                    if (!value || (num >= 0 && num <= 14)) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('pH值应在0-14之间'))
-                  }
-                },
-              ]}
+              rules={phRules}
             >
               <Input type="number" step="0.1" placeholder="请输入pH值(0-14)" inputMode="decimal" />
             </Form.Item>

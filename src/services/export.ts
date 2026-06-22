@@ -8,81 +8,61 @@ import { cycleService } from './db'
 export const exportToExcel = async (): Promise<void> => {
   const cycles = await cycleService.getAll()
 
-  // 准备数据
-  const data: Record<string, string | number>[] = []
+  // Sheet 1：检测周期
+  const cycleSheetData: Record<string, string | number>[] = cycles.map((cycle) => ({
+    周期ID: cycle.id,
+    开始时间: formatDateTime(cycle.startTime),
+    结束时间: cycle.endTime ? formatDateTime(cycle.endTime) : '未结束',
+    状态: cycle.status === 'ongoing' ? '进行中' : cycle.status === 'manual' ? '手动录入' : '已完成',
+    总尿量: `${cycle.totalVolume} ml`,
+    '24H尿蛋白定量': cycle.testResults?.protein24hQuantitative ? `${cycle.testResults.protein24hQuantitative} mg/L` : '',
+    '24h总蛋白': cycle.testResults?.proteinTotal24h
+      ? `${cycle.testResults.proteinTotal24h.toFixed(2)} g`
+      : '',
+    尿常规尿蛋白: cycle.testResults?.proteinRoutine || '',
+    尿常规潜血: cycle.testResults?.occultBlood || '',
+    肌酐: cycle.testResults?.creatinine ? `${cycle.testResults.creatinine} μmol/L` : '',
+    尿比重: cycle.testResults?.specificGravity || '',
+    pH值: cycle.testResults?.ph || '',
+    排尿次数: cycle.urinationRecords.length,
+  }))
 
+  // Sheet 2：排尿记录详情
+  const urinationSheetData: Record<string, string | number>[] = []
   cycles.forEach((cycle) => {
-    // 周期基本信息
-    data.push({
-      周期ID: cycle.id,
-      开始时间: formatDateTime(cycle.startTime),
-      结束时间: cycle.endTime ? formatDateTime(cycle.endTime) : '未结束',
-      状态: cycle.status === 'ongoing' ? '进行中' : '已完成',
-      总尿量: `${cycle.totalVolume} ml`,
-      '24H尿蛋白定量': cycle.testResults?.protein24hQuantitative ? `${cycle.testResults.protein24hQuantitative} mg/L` : '',
-      '24h总蛋白': cycle.testResults?.proteinTotal24h
-        ? `${cycle.testResults.proteinTotal24h.toFixed(2)} g`
-        : '',
-      尿常规尿蛋白: cycle.testResults?.proteinRoutine || '',
-      尿常规潜血: cycle.testResults?.occultBlood || '',
-      肌酐: cycle.testResults?.creatinine ? `${cycle.testResults.creatinine} μmol/L` : '',
-      尿比重: cycle.testResults?.specificGravity || '',
-      pH值: cycle.testResults?.ph || '',
-      排尿次数: cycle.urinationRecords.length,
-    })
-
-    // 排尿记录详情
-    if (cycle.urinationRecords.length > 0) {
-      cycle.urinationRecords.forEach((record, index) => {
-        data.push({
-          周期ID: '',
-          开始时间: '',
-          结束时间: '',
-          状态: '',
-          总尿量: '',
-          '24H尿蛋白定量': '',
-          '24h总蛋白': '',
-          尿常规尿蛋白: '',
-          尿常规潜血: '',
-          肌酐: '',
-          尿比重: '',
-          pH值: '',
-          排尿次数: `第${index + 1}次`,
-          排尿时间: formatDateTime(record.time),
-          尿量: `${record.volume} ml`,
-        })
+    cycle.urinationRecords.forEach((record, index) => {
+      urinationSheetData.push({
+        周期ID: cycle.id,
+        开始时间: formatDateTime(cycle.startTime),
+        排尿序号: index + 1,
+        排尿时间: formatDateTime(record.time),
+        尿量: `${record.volume} ml`,
       })
-    }
-
-    // 空行分隔
-    data.push({})
+    })
   })
 
   // 创建工作簿
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.json_to_sheet(data)
 
-  // 设置列宽
-  const colWidths = [
-    { wch: 20 }, // 周期ID
-    { wch: 20 }, // 开始时间
-    { wch: 20 }, // 结束时间
-    { wch: 10 }, // 状态
-    { wch: 12 }, // 总尿量
-    { wch: 18 }, // 24H尿蛋白定量
-    { wch: 15 }, // 24h总蛋白
-    { wch: 15 }, // 尿常规尿蛋白
-    { wch: 15 }, // 尿常规潜血
-    { wch: 15 }, // 肌酐
-    { wch: 10 }, // 尿比重
-    { wch: 10 }, // pH值
-    { wch: 12 }, // 排尿次数
-    { wch: 20 }, // 排尿时间
-    { wch: 12 }, // 尿量
+  // Sheet 1
+  const cycleWs = XLSX.utils.json_to_sheet(cycleSheetData)
+  cycleWs['!cols'] = [
+    { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
+    { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
+    { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
+    { wch: 12 },
   ]
-  ws['!cols'] = colWidths
+  XLSX.utils.book_append_sheet(wb, cycleWs, '检测周期')
 
-  XLSX.utils.book_append_sheet(wb, ws, '检测记录')
+  // Sheet 2
+  if (urinationSheetData.length > 0) {
+    const urinationWs = XLSX.utils.json_to_sheet(urinationSheetData)
+    urinationWs['!cols'] = [
+      { wch: 20 }, { wch: 20 }, { wch: 10 },
+      { wch: 20 }, { wch: 12 },
+    ]
+    XLSX.utils.book_append_sheet(wb, urinationWs, '排尿记录')
+  }
 
   // 导出文件
   const fileName = `24小时尿蛋白检测记录_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.xlsx`

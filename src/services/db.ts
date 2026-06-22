@@ -83,6 +83,18 @@ export const cycleService = {
     return cycle || null
   },
 
+  // 获取最新检测周期（不论状态）
+  async getLatest(): Promise<TestCycle | null> {
+    const cycle = await db.testCycles.orderBy('createdAt').reverse().first()
+    if (cycle) {
+      cycle.urinationRecords = await db.urinationRecords
+        .where('cycleId')
+        .equals(cycle.id)
+        .sortBy('time')
+    }
+    return cycle || null
+  },
+
   // 创建新的检测周期
   async create(cycle: Omit<TestCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<TestCycle> {
     const now = new Date().toISOString()
@@ -132,17 +144,14 @@ export const urinationService = {
       createdAt: new Date().toISOString(),
     }
 
-    // 使用 Dexie 事务包裹写+读+更新，防止并发写入时总尿量被陈旧值覆盖
+    // 使用 Dexie 事务 + 增量更新 totalVolume（O(1) 而非 O(n)）
     await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
       await db.urinationRecords.add(newRecord)
 
-      const allRecords = await db.urinationRecords
-        .where('cycleId')
-        .equals(record.cycleId)
-        .toArray()
-      const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+      const cycle = await db.testCycles.get(record.cycleId)
+      const newTotalVolume = (cycle?.totalVolume ?? 0) + newRecord.volume
       await db.testCycles.update(record.cycleId, {
-        totalVolume,
+        totalVolume: newTotalVolume,
         updatedAt: new Date().toISOString(),
       })
     })
@@ -152,40 +161,35 @@ export const urinationService = {
 
   // 更新排尿记录
   async update(id: string, updates: Partial<UrinationRecord>): Promise<void> {
-    // 使用事务保证原子性
     await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
+      const oldRecord = await db.urinationRecords.get(id)
+      if (!oldRecord) return
+
+      const volumeDelta = updates.volume !== undefined
+        ? updates.volume - oldRecord.volume
+        : 0
       await db.urinationRecords.update(id, updates)
 
-      const record = await db.urinationRecords.get(id)
-      if (record) {
-        const allRecords = await db.urinationRecords
-          .where('cycleId')
-          .equals(record.cycleId)
-          .toArray()
-        const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
-        await db.testCycles.update(record.cycleId, {
-          totalVolume,
-          updatedAt: new Date().toISOString(),
-        })
-      }
+      const cycle = await db.testCycles.get(oldRecord.cycleId)
+      const newTotalVolume = (cycle?.totalVolume ?? 0) + volumeDelta
+      await db.testCycles.update(oldRecord.cycleId, {
+        totalVolume: newTotalVolume,
+        updatedAt: new Date().toISOString(),
+      })
     })
   },
 
   // 删除排尿记录
   async delete(id: string): Promise<void> {
-    // 使用事务保证原子性
     await db.transaction('rw', db.urinationRecords, db.testCycles, async () => {
       const record = await db.urinationRecords.get(id)
       if (record) {
         await db.urinationRecords.delete(id)
 
-        const allRecords = await db.urinationRecords
-          .where('cycleId')
-          .equals(record.cycleId)
-          .toArray()
-        const totalVolume = allRecords.reduce((sum, r) => sum + r.volume, 0)
+        const cycle = await db.testCycles.get(record.cycleId)
+        const newTotalVolume = (cycle?.totalVolume ?? 0) - record.volume
         await db.testCycles.update(record.cycleId, {
-          totalVolume,
+          totalVolume: newTotalVolume,
           updatedAt: new Date().toISOString(),
         })
       }
@@ -199,7 +203,8 @@ export const configService = {
   async get(): Promise<UserConfig | null> {
     const config = await db.userConfig.toCollection().first()
     if (config) {
-      const { id, ...userConfig } = config as UserConfig & { id: string }
+      // Dexie 返回的记录含主键 id，解构去除后再返回
+      const { id: _, ...userConfig } = config as UserConfig & { id: string }
       return userConfig
     }
     return null

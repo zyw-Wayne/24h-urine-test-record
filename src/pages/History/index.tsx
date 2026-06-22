@@ -19,6 +19,7 @@ import { cycleService, configService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import { URINE_ROUTINE_OPTIONS } from '@/constants'
+import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules } from '@/utils/validators'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -27,9 +28,9 @@ import EmptyState from '@/components/Common/EmptyState'
 const HistoryPage = () => {
   const [cycles, setCycles] = useState<TestCycle[]>([])
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
-  const isMounted = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [selectedCycle, setSelectedCycle] = useState<TestCycle | null>(null)
   const [detailVisible, setDetailVisible] = useState(false)
   const [chartVisible, setChartVisible] = useState(false)
@@ -44,16 +45,12 @@ const HistoryPage = () => {
       const config = await configService.get()
       setUserConfig(config)
       await loadCycles('all')
-      isMounted.current = true
+      setInitialLoading(false)
     }
     loadData()
   }, [])
 
-  // timeRange 变化时重新加载（跳过初始挂载时的重复触发）
-  useEffect(() => {
-    if (!isMounted.current) return
-    loadCycles(timeRange)
-  }, [timeRange])
+  // timeRange 变化时重新加载
 
   const loadCycles = async (range?: string) => {
     setLoading(true)
@@ -91,22 +88,21 @@ const HistoryPage = () => {
     // 如果是手动录入的记录，打开编辑表单
     if (cycle.status === 'manual') {
       clearTimeout(timerRef.current)
+      // 先设置表单值再打开弹窗，避免 setTimeout hack
       setEditingCycle(cycle)
+      const startTimeValue = new Date(cycle.startTime)
+      manualForm.setFieldsValue({
+        startTime: startTimeValue,
+        totalVolume: cycle.totalVolume,
+        protein24hQuantitative: cycle.testResults?.protein24hQuantitative,
+        proteinTotal24h: cycle.testResults?.proteinTotal24h,
+        proteinRoutine: cycle.testResults?.proteinRoutine,
+        occultBlood: cycle.testResults?.occultBlood,
+        creatinine: cycle.testResults?.creatinine,
+        specificGravity: cycle.testResults?.specificGravity,
+        ph: cycle.testResults?.ph,
+      })
       setManualFormVisible(true)
-      timerRef.current = setTimeout(() => {
-        const startTimeValue = new Date(cycle.startTime)
-        manualForm.setFieldsValue({
-          startTime: startTimeValue,
-          totalVolume: cycle.totalVolume,
-          protein24hQuantitative: cycle.testResults?.protein24hQuantitative,
-          proteinTotal24h: cycle.testResults?.proteinTotal24h,
-          proteinRoutine: cycle.testResults?.proteinRoutine,
-          occultBlood: cycle.testResults?.occultBlood,
-          creatinine: cycle.testResults?.creatinine,
-          specificGravity: cycle.testResults?.specificGravity,
-          ph: cycle.testResults?.ph,
-        })
-      }, 100)
     } else {
       // 正常记录显示详情
       setSelectedCycle(cycle)
@@ -253,7 +249,7 @@ const HistoryPage = () => {
       </Card>
 
       {/* 历史记录列表 */}
-      {loading && cycles.length === 0 ? (
+      {initialLoading ? (
         <Loading text="加载历史记录..." />
       ) : cycles.length === 0 ? (
         <Card>
@@ -384,11 +380,10 @@ const HistoryPage = () => {
           manualForm.resetFields()
         }}
       >
-        {manualFormVisible && (
-          <Form
-            form={manualForm}
-            onFinish={handleSaveManualRecord}
-            footer={
+        <Form
+          form={manualForm}
+          onFinish={handleSaveManualRecord}
+          footer={
               <Button block type="submit" color="primary" loading={loading}>
                 {editingCycle ? '更新' : '保存'}
               </Button>
@@ -429,18 +424,7 @@ const HistoryPage = () => {
             <Form.Item
               name="totalVolume"
               label="总尿量(ml)"
-              rules={[
-                { required: true, message: '请输入总尿量' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) > 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('总尿量必须大于0'))
-                  }
-                },
-              ]}
+              rules={totalVolumeRules}
             >
               <Input 
                 type="number" 
@@ -466,18 +450,7 @@ const HistoryPage = () => {
             <Form.Item
               name="protein24hQuantitative"
               label="24H尿蛋白定量(mg/L)"
-              rules={[
-                { required: true, message: '请输入24H尿蛋白定量' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) >= 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('24H尿蛋白定量不能为负数'))
-                  }
-                },
-              ]}
+              rules={protein24hRules}
             >
               <Input 
                 type="number" 
@@ -502,18 +475,7 @@ const HistoryPage = () => {
             <Form.Item
               name="proteinTotal24h"
               label="24小时总蛋白量(g)"
-              rules={[
-                { required: false },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) >= 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('24小时总蛋白量不能为负数'))
-                  }
-                },
-              ]}
+              rules={proteinTotal24hRules}
               extra="留空将自动计算，或手动输入覆盖"
             >
               <Input 
@@ -540,61 +502,25 @@ const HistoryPage = () => {
             <Form.Item
               name="creatinine"
               label="肌酐(μmol/L)"
-              rules={[
-                { required: true, message: '请输入肌酐' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    if (!value || Number(value) >= 0) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('肌酐不能为负数'))
-                  }
-                },
-              ]}
+              rules={creatinineRules}
             >
               <Input type="number" placeholder="请输入肌酐" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="specificGravity"
               label="尿比重"
-              rules={[
-                { required: true, message: '请输入尿比重' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    const num = Number(value)
-                    if (!value || (num >= 1.000 && num <= 1.050)) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('尿比重应在1.000-1.050之间'))
-                  }
-                },
-              ]}
+              rules={specificGravityRules}
             >
               <Input type="number" step="0.001" placeholder="请输入尿比重(1.000-1.050)" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="ph"
               label="pH值"
-              rules={[
-                { required: true, message: '请输入pH值' },
-                { pattern: /^\d+(\.\d+)?$/, message: '请输入有效的数字' },
-                { 
-                  validator: (_, value) => {
-                    const num = Number(value)
-                    if (!value || (num >= 0 && num <= 14)) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('pH值应在0-14之间'))
-                  }
-                },
-              ]}
+              rules={phRules}
             >
               <Input type="number" step="0.1" placeholder="请输入pH值(0-14)" inputMode="decimal" />
             </Form.Item>
           </Form>
-        )}
       </Popup>
     </div>
   )

@@ -2,9 +2,10 @@ import { Button, Card, List, Space, Toast, Dialog } from 'antd-mobile'
 import { useState, useEffect } from 'react'
 import type { TestCycle, UserConfig } from '@/types'
 import { formatDateTime, formatVolume } from '@/utils'
-import { getNormalRanges, isAbnormal, warnIf } from '@/utils/normalRanges'
-import { urinationService, configService, cycleService } from '@/services/db'
+import { configService, cycleService } from '@/services/db'
+import { urinationService } from '@/services/db'
 import EmptyState from '@/components/Common/EmptyState'
+import TestResultDisplay from '@/components/Common/TestResultDisplay'
 
 interface HistoryDetailProps {
   cycle: TestCycle
@@ -12,7 +13,6 @@ interface HistoryDetailProps {
   onUpdate: () => void
 }
 
-// isAbnormal/warnIf 从 utils/normalRanges 导入
 
 const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
@@ -66,7 +66,6 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
     }
   }
 
-  const normalRanges = getNormalRanges(userConfig || undefined)
 
   return (
     <div style={{ padding: '16px' }}>
@@ -110,106 +109,7 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
       {/* 检测结果 */}
       {currentCycle.testResults && (
         <Card title="检测结果" style={{ marginBottom: '16px' }}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>24H尿蛋白定量:</span>
-              <span>{currentCycle.testResults.protein24hQuantitative} mg/L</span>
-            </div>
-            {currentCycle.testResults.proteinTotal24h && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>24h总蛋白:</span>
-                <span
-                  style={{
-                    fontWeight: 'bold',
-                    color: isAbnormal(
-                      currentCycle.testResults.proteinTotal24h * 1000,
-                      0,
-                      normalRanges.protein24h
-                    )
-                      ? 'red'
-                      : 'inherit',
-                  }}
-                >
-                  {warnIf(
-                    isAbnormal(currentCycle.testResults.proteinTotal24h * 1000, 0, normalRanges.protein24h),
-                    `${currentCycle.testResults.proteinTotal24h.toFixed(2)} g`
-                  )}
-                </span>
-              </div>
-            )}
-            {currentCycle.testResults.proteinRoutine && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>尿常规-尿蛋白:</span>
-                <span style={{ fontWeight: 'bold' }}>{currentCycle.testResults.proteinRoutine}</span>
-              </div>
-            )}
-            {currentCycle.testResults.occultBlood && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>尿常规-潜血:</span>
-                <span style={{ fontWeight: 'bold' }}>{currentCycle.testResults.occultBlood}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>肌酐:</span>
-              <span
-                style={{
-                  color: isAbnormal(
-                    currentCycle.testResults.creatinine,
-                    normalRanges.creatinine.min,
-                    normalRanges.creatinine.max
-                  )
-                    ? 'red'
-                    : 'inherit',
-                }}
-              >
-                {warnIf(
-                  isAbnormal(currentCycle.testResults.creatinine, normalRanges.creatinine.min, normalRanges.creatinine.max),
-                  `${currentCycle.testResults.creatinine} μmol/L`
-                )}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>尿比重:</span>
-              <span
-                style={{
-                  color: isAbnormal(
-                    currentCycle.testResults.specificGravity,
-                    normalRanges.specificGravity.min,
-                    normalRanges.specificGravity.max
-                  )
-                    ? 'red'
-                    : 'inherit',
-                }}
-              >
-                {warnIf(
-                  isAbnormal(currentCycle.testResults.specificGravity, normalRanges.specificGravity.min, normalRanges.specificGravity.max),
-                  `${currentCycle.testResults.specificGravity}`
-                )}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>pH值:</span>
-              <span
-                style={{
-                  color: isAbnormal(
-                    currentCycle.testResults.ph,
-                    normalRanges.ph.min,
-                    normalRanges.ph.max
-                  )
-                    ? 'red'
-                    : 'inherit',
-                }}
-              >
-                {warnIf(
-                  isAbnormal(currentCycle.testResults.ph, normalRanges.ph.min, normalRanges.ph.max),
-                  `${currentCycle.testResults.ph}`
-                )}
-              </span>
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)', marginTop: '8px' }}>
-              检测时间: {formatDateTime(currentCycle.testResults.testedAt)}
-            </div>
-          </Space>
+          <TestResultDisplay testResults={currentCycle.testResults} userConfig={userConfig} />
         </Card>
       )}
 

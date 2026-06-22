@@ -49,36 +49,7 @@ export const DEFAULT_USER_CONFIG = {
 // 备份文件版本
 export const BACKUP_VERSION = '1.0.0'
 
-// --- 尿常规值映射（字符串 ↔ 数值，供图表使用） ---
-
-// 尿常规字符串 → 数值
-export const ROUTINE_STRING_TO_VALUE: Record<string, number> = {
-  '阴性(-)': 0,
-  '阴性': 0,
-  '-': 0,
-  '弱阳性(±)': 0.5,
-  '弱阳性': 0.5,
-  '±': 0.5,
-  '1+': 1,
-  '++': 1,
-  '2+': 2,
-  '+++': 2,
-  '3+': 3,
-  '++++': 3,
-  '4+': 4,
-}
-
-// 数值 → 显示标签
-export const ROUTINE_VALUE_TO_LABEL: Record<number, string> = {
-  0: '阴性(-)',
-  0.5: '弱阳性(±)',
-  1: '1+/++',
-  2: '2+/+++',
-  3: '3+/++++',
-  4: '4+',
-}
-
-// Selector 选项（供尿常规-尿蛋白/潜血表单使用）
+// 尿常规 Selector 选项（供尿常规-尿蛋白/潜血表单使用）
 export const URINE_ROUTINE_OPTIONS = [
   { label: '阴性(-)', value: '阴性(-)' },
   { label: '弱阳性(±)', value: '弱阳性(±)' },
@@ -91,16 +62,7 @@ export const URINE_ROUTINE_OPTIONS = [
   { label: '++++', value: '++++' },
 ]
 
-// 将尿常规字符串转为图表数值
-export const convertRoutineValue = (value: string | undefined): number | null => {
-  if (!value) return null
-  const normalized = String(value).trim()
-  const result = ROUTINE_STRING_TO_VALUE[normalized]
-  return result !== undefined ? result : null
-}
-
-// 将图表数值转为显示标签
-export const getRoutineLabel = (value: number | null): string => {
-  return value !== null ? ROUTINE_VALUE_TO_LABEL[value] || '' : '无数据'
-}
+// 以下函数已迁移至 src/utils/index.ts，为保持向后兼容重新导出
+// 新代码请直接从 '@/utils' 导入
+export { ROUTINE_VALUE_TO_LABEL, convertRoutineValue, getRoutineLabel } from '@/utils'
 
