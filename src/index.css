@@ -64,6 +64,9 @@ input, textarea {
   --page-bg: #f5f5f5;
   --tabbar-bg: #ffffff;
   --loading-overlay: rgba(255, 255, 255, 0.9);
+  /* 安全区域 — edge-to-edge 模式下由 WebView 提供真实值 */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html[data-prefers-color-scheme='dark'] {

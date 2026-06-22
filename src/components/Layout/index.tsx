@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TabBar } from 'antd-mobile'
 import { FileOutline, UnorderedListOutline, UserOutline } from 'antd-mobile-icons'
 import type { ReactNode } from 'react'
+import { initSafeArea } from '@/utils/safeArea'
 
 interface LayoutProps {
   children: ReactNode
@@ -26,16 +28,23 @@ const tabs = [
   },
 ]
 
+// Android 默认状态栏高度估值 24px，JS 获取后会更新
 const LayoutBase = ({ children }: LayoutProps) => {
   const location = useLocation()
   const navigate = useNavigate()
+  const [safeAreaTop, setSafeAreaTop] = useState(24)
+
+  useEffect(() => {
+    initSafeArea().then(setSafeAreaTop).catch(() => setSafeAreaTop(24))
+  }, [])
 
   return (
     <div style={{ 
-      height: '100vh', 
+      height: '100dvh', 
       display: 'flex', 
       flexDirection: 'column',
-      paddingBottom: 'calc(env(safe-area-inset-bottom) + 50px)',
+      paddingTop: safeAreaTop,
+      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 50px)',
     }}>
       <div style={{ 
         flex: 1, 
@@ -65,4 +74,3 @@ const LayoutBase = ({ children }: LayoutProps) => {
 }
 
 export default LayoutBase
-

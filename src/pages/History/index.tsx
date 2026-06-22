@@ -194,8 +194,7 @@ const HistoryPage = () => {
 
   return (
     <div style={{ 
-      padding: '16px', 
-      paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+      padding: '16px',
       paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
     }}>
       {/* 时间筛选 */}
@@ -326,7 +325,6 @@ const HistoryPage = () => {
         bodyStyle={{ 
           maxHeight: '90dvh', 
           overflowY: 'auto',
-          paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
           paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
         }}
         showCloseButton
@@ -349,7 +347,6 @@ const HistoryPage = () => {
           maxHeight: '90dvh', 
           overflowY: 'auto', 
           padding: '16px',
-          paddingTop: 'max(16px, calc(env(safe-area-inset-top, 0px) + 16px))',
           paddingBottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
         }}
         showCloseButton
@@ -370,7 +367,6 @@ const HistoryPage = () => {
           padding: '20px',
           maxHeight: '90dvh',
           overflowY: 'auto',
-          paddingTop: 'max(20px, calc(env(safe-area-inset-top, 0px) + 20px))',
           paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
         }}
         showCloseButton
