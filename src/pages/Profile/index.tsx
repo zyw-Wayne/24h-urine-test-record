@@ -96,8 +96,14 @@ const ProfilePage = () => {
 
       setLoading(true)
       try {
-        await importBackup(file)
+        const result = await importBackup(file)
         Toast.show({ content: '恢复成功', icon: 'success' })
+        if (result?.warnings?.length) {
+          // 短暂延迟避免 Toast 叠加
+          setTimeout(() => {
+            Toast.show({ content: result.warnings[0], icon: 'info', duration: 3000 })
+          }, 500)
+        }
         await loadConfig()
       } catch (error) {
         Toast.show({ content: '恢复失败: ' + (error as Error).message, icon: 'fail' })

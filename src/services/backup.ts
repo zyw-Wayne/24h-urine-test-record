@@ -28,7 +28,7 @@ export const exportBackup = async (): Promise<void> => {
 }
 
 // 导入备份（使用事务保证原子性：失败时自动回滚）
-export const importBackup = async (file: File): Promise<void> => {
+export const importBackup = async (file: File): Promise<{ warnings: string[] } | void> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -69,10 +69,20 @@ export const importBackup = async (file: File): Promise<void> => {
           }
         })
 
+        // 检测旧版备份中缺尿酸的记录
+        const missingUricAcidCount = backupData.testCycles.filter(
+          (c) => c.testResults && c.testResults.uricAcid === undefined
+        ).length
+
+        const warnings: string[] = []
+        if (missingUricAcidCount > 0) {
+          warnings.push(`有 ${missingUricAcidCount} 条旧记录缺少尿酸数据，编辑时可选填`)
+        }
+
         // 恢复用户配置（独立事务，不影响主数据恢复）
         await configService.save(backupData.userConfig)
 
-        resolve()
+        resolve(warnings.length > 0 ? { warnings } : undefined)
       } catch (error) {
         reject(error)
       }
