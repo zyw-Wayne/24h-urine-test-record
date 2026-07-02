@@ -32,6 +32,7 @@ export interface TestResult {
   proteinRoutine?: string // 尿常规-尿蛋白（如：阴性、1+、2+、++、+++等）
   occultBlood?: string // 尿常规-潜血（如：阴性、1+、2+、++、+++等）
   creatinine: number // 肌酐(μmol/L)
+  uricAcid: number                // ★ 新增：尿酸(μmol/L)
   specificGravity: number // 尿比重
   ph: number // pH值
   testedAt: string // 检测时间

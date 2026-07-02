@@ -21,6 +21,18 @@ export const NORMAL_RANGES_CREATININE = {
   },
 }
 
+// 尿酸正常值范围（区分性别）
+export const NORMAL_RANGES_URIC_ACID = {
+  MALE: {
+    MIN: 210,   // 男性尿酸正常值下限 (μmol/L)
+    MAX: 430,   // 男性尿酸正常值上限 (μmol/L)
+  },
+  FEMALE: {
+    MIN: 150,   // 女性尿酸正常值下限 (μmol/L)
+    MAX: 380,   // 女性尿酸正常值上限 (μmol/L)
+  },
+}
+
 // 兼容旧代码（使用女性范围作为默认值）
 export const NORMAL_RANGES = {
   PROTEIN_24H: NORMAL_RANGES_COMMON.PROTEIN_24H,
@@ -47,7 +59,7 @@ export const DEFAULT_USER_CONFIG = {
 }
 
 // 备份文件版本
-export const BACKUP_VERSION = '1.0.0'
+export const BACKUP_VERSION = '1.1.0'
 
 // 尿常规 Selector 选项（供尿常规-尿蛋白/潜血表单使用）
 export const URINE_ROUTINE_OPTIONS = [

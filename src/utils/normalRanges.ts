@@ -1,6 +1,6 @@
 // 正常值范围工具函数
 import type { UserConfig } from '@/types'
-import { NORMAL_RANGES_COMMON, NORMAL_RANGES_CREATININE } from '@/constants'
+import { NORMAL_RANGES_COMMON, NORMAL_RANGES_CREATININE, NORMAL_RANGES_URIC_ACID } from '@/constants'
 
 /**
  * 根据用户性别获取肌酐正常值范围
@@ -11,6 +11,17 @@ export const getCreatinineRange = (gender?: 'male' | 'female') => {
   }
   // 默认使用女性范围（更保守）
   return NORMAL_RANGES_CREATININE.FEMALE
+}
+
+/**
+ * 根据用户性别获取尿酸正常值范围
+ */
+export const getUricAcidRange = (gender?: 'male' | 'female') => {
+  if (gender === 'male') {
+    return NORMAL_RANGES_URIC_ACID.MALE
+  }
+  // 默认使用女性范围（更保守）
+  return NORMAL_RANGES_URIC_ACID.FEMALE
 }
 
 // 检查检测值是否超出正常范围
@@ -26,12 +37,17 @@ const warnIf = (cond: boolean, value: string | number): string =>
  */
 export const getNormalRanges = (config?: UserConfig) => {
   const creatinineRange = getCreatinineRange(config?.gender)
+  const uricAcidRange = getUricAcidRange(config?.gender)  // ★ 新增
   
   return {
     protein24h: NORMAL_RANGES_COMMON.PROTEIN_24H,
     creatinine: {
       min: creatinineRange.MIN,
       max: creatinineRange.MAX,
+    },
+    uricAcid: {            // ★ 新增
+      min: uricAcidRange.MIN,
+      max: uricAcidRange.MAX,
     },
     specificGravity: {
       min: NORMAL_RANGES_COMMON.SPECIFIC_GRAVITY_MIN,
