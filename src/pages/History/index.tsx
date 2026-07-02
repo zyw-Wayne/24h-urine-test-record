@@ -19,7 +19,7 @@ import { cycleService, configService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import { URINE_ROUTINE_OPTIONS } from '@/constants'
-import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules } from '@/utils/validators'
+import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules, uricAcidRules } from '@/utils/validators'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -99,6 +99,7 @@ const HistoryPage = () => {
         proteinRoutine: cycle.testResults?.proteinRoutine,
         occultBlood: cycle.testResults?.occultBlood,
         creatinine: cycle.testResults?.creatinine,
+        uricAcid: cycle.testResults?.uricAcid,
         specificGravity: cycle.testResults?.specificGravity,
         ph: cycle.testResults?.ph,
       })
@@ -126,6 +127,7 @@ const HistoryPage = () => {
     proteinRoutine?: string
     occultBlood?: string
     creatinine: number
+    uricAcid: number
     specificGravity: number
     ph: number
   }) => {
@@ -151,6 +153,7 @@ const HistoryPage = () => {
         proteinRoutine: values.proteinRoutine,
         occultBlood: values.occultBlood,
         creatinine: values.creatinine,
+        uricAcid: values.uricAcid,
         specificGravity: values.specificGravity,
         ph: values.ph,
         testedAt: startTime,
@@ -501,6 +504,13 @@ const HistoryPage = () => {
               rules={creatinineRules}
             >
               <Input type="number" placeholder="请输入肌酐" inputMode="decimal" />
+            </Form.Item>
+            <Form.Item
+              name="uricAcid"
+              label="尿酸(μmol/L)"
+              rules={uricAcidRules}
+            >
+              <Input type="number" placeholder="请输入尿酸" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="specificGravity"

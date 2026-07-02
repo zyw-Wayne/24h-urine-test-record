@@ -19,7 +19,7 @@ import { cycleService, urinationService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges, isAbnormal, warnIf } from '@/utils/normalRanges'
 import { CYCLE_DURATION, URINE_ROUTINE_OPTIONS } from '@/constants'
-import { volumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules } from '@/utils/validators'
+import { volumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, uricAcidRules } from '@/utils/validators'
 import { configService } from '@/services/db'
 import type { UserConfig } from '@/types'
 import Loading from '@/components/Common/Loading'
@@ -228,6 +228,7 @@ const RecordPage = () => {
     proteinRoutine?: string
     occultBlood?: string
     creatinine: number
+    uricAcid: number
     specificGravity: number
     ph: number
   }) => {
@@ -583,6 +584,13 @@ const RecordPage = () => {
               rules={creatinineRules}
             >
               <Input type="number" placeholder="请输入肌酐" inputMode="decimal" />
+            </Form.Item>
+            <Form.Item
+              name="uricAcid"
+              label="尿酸(μmol/L)"
+              rules={uricAcidRules}
+            >
+              <Input type="number" placeholder="请输入尿酸" inputMode="decimal" />
             </Form.Item>
             <Form.Item
               name="specificGravity"
