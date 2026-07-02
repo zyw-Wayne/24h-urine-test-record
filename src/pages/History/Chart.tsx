@@ -39,11 +39,12 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
   const {
     hasProtein24h,
     hasCreatinine,
+    hasUricAcid,
     protein24hQuantitativeChartData,
     proteinRoutineChartData,
     occultBloodChartData,
     creatinineChartData,
-    comparisonChartData,
+    uricAcidChartData,
     chartOptions,
     routineChartOptions,
   } = useMemo(() => {
@@ -52,10 +53,6 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
     )
 
     const labels = sortedCycles.map((cycle) => formatDate(cycle.startTime))
-    const volumes = sortedCycles.map((cycle) => cycle.totalVolume)
-    const proteins = sortedCycles
-      .map((cycle) => (cycle.testResults?.proteinTotal24h || 0) * 1000)
-      .map((v) => (v === 0 ? null : v))
     const protein24hQuantitative = sortedCycles
       .map((cycle) => cycle.testResults?.protein24hQuantitative || null)
       .map((v) => (v === 0 ? null : v))
@@ -66,6 +63,12 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
       .map((cycle) => convertRoutineValue(cycle.testResults?.proteinRoutine))
     const occultBloodValues = sortedCycles
       .map((cycle) => convertRoutineValue(cycle.testResults?.occultBlood))
+
+    const uricAcids = sortedCycles
+      .map((cycle) => cycle.testResults?.uricAcid || null)
+      .map((v) => (v === 0 ? null : v))
+
+    const hasUricAcid = uricAcids.some((v: number | null) => v !== null)
 
     const chartOptions = {
       responsive: true,
@@ -94,7 +97,7 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
         y: {
           beginAtZero: true,
           ticks: {
-            stepSize: 0.5,
+            stepSize: 1,
             callback(value: number | string, _index: number, _ticks: Tick[]) {
               const numValue = typeof value === 'number' ? value : Number(value)
               return ROUTINE_VALUE_TO_LABEL[numValue] || value
@@ -107,6 +110,7 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
     return {
       hasProtein24h: protein24hQuantitative.some((v: number | null) => v !== null),
       hasCreatinine: creatinines.some((v: number | null) => v !== null),
+      hasUricAcid,
       protein24hQuantitativeChartData: {
         labels,
         datasets: [{
@@ -145,14 +149,15 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
           tension: 0.1,
         }],
       },
-      comparisonChartData: {
+      uricAcidChartData: {
         labels,
-        datasets: [
-          { label: '总尿量 (ml)', data: volumes, backgroundColor: 'rgba(75, 192, 192, 0.5)' },
-          { label: '24h总蛋白 (mg)', data: proteins, backgroundColor: 'rgba(255, 99, 132, 0.5)' },
-          { label: '24H尿蛋白定量 (mg/L)', data: protein24hQuantitative, backgroundColor: 'rgba(255, 159, 64, 0.5)' },
-          { label: '肌酐 (μmol/L)', data: creatinines, backgroundColor: 'rgba(54, 162, 235, 0.5)' },
-        ],
+        datasets: [{
+          label: '尿酸 (μmol/L)',
+          data: uricAcids,
+          borderColor: 'rgb(46, 204, 113)',
+          backgroundColor: 'rgba(46, 204, 113, 0.2)',
+          tension: 0.1,
+        }],
       },
       chartOptions,
       routineChartOptions,
@@ -198,6 +203,14 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
           </Card>
         )}
 
+        {hasUricAcid && (
+          <Card title="尿酸趋势">
+            <div style={{ height: '250px' }}>
+              <Line data={uricAcidChartData} options={chartOptions} />
+            </div>
+          </Card>
+        )}
+
         <Card title="尿常规-潜血趋势">
           <div style={{ height: '250px' }}>
             {occultBloodChartData.datasets[0].data.some((v: number | null) => v !== null) ? (
@@ -207,12 +220,6 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
                 暂无数据，请先录入检测结果中的"尿常规-潜血"字段
               </div>
             )}
-          </div>
-        </Card>
-
-        <Card title="多指标对比">
-          <div style={{ height: '300px' }}>
-            <Bar data={comparisonChartData} options={chartOptions} />
           </div>
         </Card>
       </Space>
