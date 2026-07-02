@@ -73,6 +73,27 @@ const TestResultDisplay = ({ testResults, userConfig }: TestResultDisplayProps) 
           )}
         </span>
       </div>
+      {testResults.uricAcid !== undefined && (
+        <div>
+          尿酸:{' '}
+          <span style={{
+            color: isAbnormal(
+              testResults.uricAcid,
+              normalRanges.uricAcid.min,
+              normalRanges.uricAcid.max,
+            ) ? 'red' : 'inherit',
+          }}>
+            {warnIf(
+              isAbnormal(
+                testResults.uricAcid,
+                normalRanges.uricAcid.min,
+                normalRanges.uricAcid.max,
+              ),
+              `${testResults.uricAcid} μmol/L`,
+            )}
+          </span>
+        </div>
+      )}
       <div>
         尿比重:{' '}
         <span
