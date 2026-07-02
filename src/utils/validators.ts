@@ -74,7 +74,7 @@ export const uricAcidRules = [
 /** 尿酸校验规则（旧记录编辑时使用，无 required） */
 export const uricAcidRulesOptional = [
   { required: false },
-  requiredNumber,
+  optionalNumber,
   nonNegativeValidator,
 ]
 
