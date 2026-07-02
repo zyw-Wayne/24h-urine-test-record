@@ -85,14 +85,22 @@ const HistoryPage = () => {
   }
 
   const handleViewDetail = (cycle: TestCycle) => {
-    // 如果是手动录入的记录，打开编辑表单
-    if (cycle.status === 'manual') {
-      clearTimeout(timerRef.current)
-      // 先设置表单值再打开弹窗，避免 setTimeout hack
+    // 所有记录统一先打开详情弹窗（不再区分 manual 直接进编辑）
+    clearTimeout(timerRef.current)
+    setSelectedCycle(cycle)
+    setDetailVisible(true)
+  }
+
+  // 从详情弹窗切换到编辑模式
+  const handleEditFromDetail = () => {
+    if (!selectedCycle) return
+    const cycle = selectedCycle
+    setDetailVisible(false)
+    // 延迟打开编辑表单，让详情弹窗关闭动画先完成
+    setTimeout(() => {
       setEditingCycle(cycle)
-      const startTimeValue = new Date(cycle.startTime)
       manualForm.setFieldsValue({
-        startTime: startTimeValue,
+        startTime: new Date(cycle.startTime),
         totalVolume: cycle.totalVolume,
         protein24hQuantitative: cycle.testResults?.protein24hQuantitative,
         proteinTotal24h: cycle.testResults?.proteinTotal24h,
@@ -104,11 +112,7 @@ const HistoryPage = () => {
         ph: cycle.testResults?.ph,
       })
       setManualFormVisible(true)
-    } else {
-      // 正常记录显示详情
-      setSelectedCycle(cycle)
-      setDetailVisible(true)
-    }
+    }, 300)
   }
 
   // 打开新增手动录入表单
@@ -338,6 +342,7 @@ const HistoryPage = () => {
             cycle={selectedCycle}
             onClose={() => setDetailVisible(false)}
             onUpdate={loadCycles}
+            onEdit={(selectedCycle.status === 'manual' || selectedCycle.status === 'completed') ? handleEditFromDetail : undefined}
           />
         )}
       </Popup>

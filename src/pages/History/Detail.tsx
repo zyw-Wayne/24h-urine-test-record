@@ -11,10 +11,11 @@ interface HistoryDetailProps {
   cycle: TestCycle
   onClose: () => void
   onUpdate: () => void
+  onEdit?: () => void
 }
 
 
-const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
+const HistoryDetail = ({ cycle, onClose, onUpdate, onEdit }: HistoryDetailProps) => {
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
   const [currentCycle, setCurrentCycle] = useState<TestCycle>(cycle)
 
@@ -71,9 +72,16 @@ const HistoryDetail = ({ cycle, onClose, onUpdate }: HistoryDetailProps) => {
     <div style={{ padding: '16px' }}>
       <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
         <h3>检测详情</h3>
-        <Button size="small" onClick={onClose}>
-          关闭
-        </Button>
+        <Space>
+          {onEdit && (
+            <Button size="small" color="primary" onClick={onEdit}>
+              编辑
+            </Button>
+          )}
+          <Button size="small" onClick={onClose}>
+            关闭
+          </Button>
+        </Space>
       </div>
 
       {/* 周期信息 */}
