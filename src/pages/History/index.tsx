@@ -19,7 +19,7 @@ import { cycleService, configService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import { URINE_ROUTINE_OPTIONS } from '@/constants'
-import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules, uricAcidRules } from '@/utils/validators'
+import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules, uricAcidRules, uricAcidRulesOptional } from '@/utils/validators'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -127,7 +127,7 @@ const HistoryPage = () => {
     proteinRoutine?: string
     occultBlood?: string
     creatinine: number
-    uricAcid: number
+    uricAcid?: number
     specificGravity: number
     ph: number
   }) => {
@@ -153,7 +153,7 @@ const HistoryPage = () => {
         proteinRoutine: values.proteinRoutine,
         occultBlood: values.occultBlood,
         creatinine: values.creatinine,
-        uricAcid: values.uricAcid,
+        uricAcid: values.uricAcid as number,
         specificGravity: values.specificGravity,
         ph: values.ph,
         testedAt: startTime,
@@ -508,7 +508,7 @@ const HistoryPage = () => {
             <Form.Item
               name="uricAcid"
               label="尿酸(μmol/L)"
-              rules={uricAcidRules}
+              rules={editingCycle?.testResults?.uricAcid === undefined ? uricAcidRulesOptional : uricAcidRules}
             >
               <Input type="number" placeholder="请输入尿酸" inputMode="decimal" />
             </Form.Item>
