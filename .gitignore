@@ -34,3 +34,7 @@ dist-ssr
 /.gradle-home/
 /.android-prefs/
 
+android/app/build/
+android/.gradle/
+android/captures/
+android/.idea/
