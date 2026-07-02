@@ -78,7 +78,7 @@ const ProfilePage = () => {
     setLoading(true)
     try {
       await exportBackup()
-      Toast.show({ content: '备份成功', icon: 'success' })
+      Toast.show({ content: '备份成功，文件已保存到下载目录', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '备份失败', icon: 'fail' })
     } finally {

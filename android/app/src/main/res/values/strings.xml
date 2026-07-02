@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">24小时尿蛋白检测记录</string>
+    <string name="title_activity_main">24小时尿蛋白检测记录</string>
+    <string name="package_name">com.urinetest.record</string>
+    <string name="custom_url_scheme">com.urinetest.record</string>
+</resources>

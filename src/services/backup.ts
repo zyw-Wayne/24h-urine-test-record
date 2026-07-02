@@ -1,5 +1,5 @@
 // 备份和恢复功能
-import { saveAs } from 'file-saver'
+import { Filesystem, Directory } from '@capacitor/filesystem'
 import type { BackupData } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
@@ -21,10 +21,15 @@ export const exportBackup = async (): Promise<void> => {
     },
   }
 
-  const jsonStr = JSON.stringify(backupData, null, 2)
-  const blob = new Blob([jsonStr], { type: 'application/json' })
-  const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`
-  saveAs(blob, fileName)
+  const jsonStr = JSON.stringify(backupData, null, 2);
+  const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
+
+  // 使用 Capacitor Filesystem API 写入设备文档目录
+  await Filesystem.writeFile({
+    path: fileName,
+    data: jsonStr,
+    directory: Directory.Documents,
+  });
 }
 
 // 导入备份（使用事务保证原子性：失败时自动回滚）
