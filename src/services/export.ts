@@ -1,6 +1,6 @@
 // 数据导出功能
 import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { Filesystem, Directory } from '@capacitor/filesystem'
 import { formatDateTime } from '@/utils'
 import { cycleService } from './db'
 
@@ -66,12 +66,27 @@ export const exportToExcel = async (): Promise<void> => {
     XLSX.utils.book_append_sheet(wb, urinationWs, '排尿记录')
   }
 
-  // 导出文件
+  // 导出文件（使用 Capacitor Filesystem API 写入文档目录）
   const fileName = `24小时尿蛋白检测记录_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.xlsx`
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  const base64Data = arrayBufferToBase64(excelBuffer)
+
+  await Filesystem.writeFile({
+    path: fileName,
+    data: base64Data,
+    directory: Directory.Documents,
   })
-  saveAs(blob, fileName)
+}
+
+/**
+ * ArrayBuffer 转为 Base64 字符串
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
 }
 

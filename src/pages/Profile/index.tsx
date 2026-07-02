@@ -66,7 +66,7 @@ const ProfilePage = () => {
     setLoading(true)
     try {
       await exportToExcel()
-      Toast.show({ content: '导出成功', icon: 'success' })
+      Toast.show({ content: '导出成功，文件已保存到文档目录', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '导出失败', icon: 'fail' })
     } finally {
