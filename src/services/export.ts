@@ -22,6 +22,7 @@ export const exportToExcel = async (): Promise<void> => {
     尿常规尿蛋白: cycle.testResults?.proteinRoutine || '',
     尿常规潜血: cycle.testResults?.occultBlood || '',
     肌酐: cycle.testResults?.creatinine ? `${cycle.testResults.creatinine} μmol/L` : '',
+    尿酸: cycle.testResults?.uricAcid ? `${cycle.testResults.uricAcid} μmol/L` : '',
     尿比重: cycle.testResults?.specificGravity || '',
     pH值: cycle.testResults?.ph || '',
     排尿次数: cycle.urinationRecords.length,
@@ -49,7 +50,8 @@ export const exportToExcel = async (): Promise<void> => {
   cycleWs['!cols'] = [
     { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
     { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
-    { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 },
+    { wch: 15 }, { wch: 15 }, { wch: 15 },
+    { wch: 10 }, { wch: 10 },
     { wch: 12 },
   ]
   XLSX.utils.book_append_sheet(wb, cycleWs, '检测周期')
