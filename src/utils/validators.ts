@@ -64,6 +64,20 @@ export const creatinineRules = [
   nonNegativeValidator,
 ]
 
+/** 尿酸校验规则 */
+export const uricAcidRules = [
+  { required: true, message: '请输入尿酸' },
+  requiredNumber,
+  nonNegativeValidator,
+]
+
+/** 尿酸校验规则（旧记录编辑时使用，无 required） */
+export const uricAcidRulesOptional = [
+  { required: false },
+  requiredNumber,
+  nonNegativeValidator,
+]
+
 /** 尿比重校验规则 */
 export const specificGravityRules = [
   { required: true, message: '请输入尿比重' },
