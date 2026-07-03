@@ -258,7 +258,7 @@ const ProfilePage = () => {
       <Card title="关于" style={{ marginTop: '16px' }}>
         <div style={{ fontSize: '14px', color: 'var(--adm-color-text-secondary)', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>24小时尿蛋白检测记录系统</div>
-          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.1.0</div>
+          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.1.1</div>
         </div>
       </Card>
 
