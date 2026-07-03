@@ -66,7 +66,7 @@ const ProfilePage = () => {
     setLoading(true)
     try {
       await exportToExcel()
-      Toast.show({ content: '导出成功，文件已保存到文档目录', icon: 'success' })
+      Toast.show({ content: '导出成功，请选择保存位置', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '导出失败', icon: 'fail' })
     } finally {
@@ -78,7 +78,7 @@ const ProfilePage = () => {
     setLoading(true)
     try {
       await exportBackup()
-      Toast.show({ content: '备份成功，文件已保存到文档目录', icon: 'success' })
+      Toast.show({ content: '备份成功，请选择保存位置', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '备份失败', icon: 'fail' })
     } finally {
@@ -258,7 +258,7 @@ const ProfilePage = () => {
       <Card title="关于" style={{ marginTop: '16px' }}>
         <div style={{ fontSize: '14px', color: 'var(--adm-color-text-secondary)', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>24小时尿蛋白检测记录系统</div>
-          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.0.0</div>
+          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.1.0</div>
         </div>
       </Card>
 
@@ -292,7 +292,7 @@ const ProfilePage = () => {
           <Form.Item
             name="gender"
             label="性别"
-            help="用于判断肌酐正常值范围（男: 53-106 μmol/L，女: 44-97 μmol/L）"
+            help="用于判断肌酐及尿酸正常值范围"
           >
             <Selector
               options={[
