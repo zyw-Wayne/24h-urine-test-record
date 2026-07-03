@@ -1,5 +1,6 @@
 // 备份和恢复功能
 import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import type { BackupData } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
@@ -7,19 +8,8 @@ import { formatDateTime } from '@/utils'
 
 // 导出备份
 export const exportBackup = async (): Promise<void> => {
-  let cycles;
-  try {
-    cycles = await cycleService.getAll();
-  } catch (e: any) {
-    throw new Error('获取数据失败: ' + (e.message || e));
-  }
-
-  let config;
-  try {
-    config = await configService.get();
-  } catch (e: any) {
-    throw new Error('获取配置失败: ' + (e.message || e));
-  }
+  const cycles = await cycleService.getAll()
+  const config = await configService.get()
 
   const backupData: BackupData = {
     version: BACKUP_VERSION,
@@ -32,19 +22,32 @@ export const exportBackup = async (): Promise<void> => {
     },
   }
 
-  let jsonStr: string;
-  try {
-    jsonStr = JSON.stringify(backupData, null, 2);
-  } catch (e: any) {
-    throw new Error('数据序列化失败: ' + (e.message || e));
-  }
-
+  const jsonStr = JSON.stringify(backupData, null, 2);
   const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
 
-  await Filesystem.writeFile({
+  // 优先写入 Documents（部分 Android 版本支持）
+  try {
+    await Filesystem.writeFile({
+      path: fileName,
+      data: jsonStr,
+      directory: Directory.Documents,
+    });
+    return;
+  } catch (e) {
+    // Documents 不可写（Android 11+ 限制），走 Share 方案
+  }
+
+  // 回退：写入缓存 → 分享
+  const result = await Filesystem.writeFile({
     path: fileName,
     data: jsonStr,
-    directory: Directory.Documents,
+    directory: Directory.Cache,
+  });
+  const fileUri = result.uri.startsWith('file://') ? result.uri : 'file://' + result.uri;
+  await Share.share({
+    title: '保存备份文件',
+    files: [fileUri],
+    dialogTitle: '保存备份文件到',
   });
 }
 
