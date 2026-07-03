@@ -1,11 +1,12 @@
 // 备份和恢复功能
 import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import type { BackupData } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
 import { formatDateTime } from '@/utils'
 
-// 导出备份
+// 导出备份（写入缓存 → 分享让用户选择保存位置）
 export const exportBackup = async (): Promise<void> => {
   const cycles = await cycleService.getAll()
   const config = await configService.get()
@@ -24,10 +25,21 @@ export const exportBackup = async (): Promise<void> => {
   const jsonStr = JSON.stringify(backupData, null, 2);
   const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
 
-  await Filesystem.writeFile({
+  // 写入缓存目录
+  const result = await Filesystem.writeFile({
     path: fileName,
     data: jsonStr,
-    directory: Directory.Documents,
+    directory: Directory.Cache,
+  });
+
+  // 确保 URI 以 file:// 开头（Share 插件要求）
+  const fileUri = result.uri.startsWith('file://') ? result.uri : 'file://' + result.uri;
+
+  // 通过系统分享让用户保存到下载目录/文件管理器
+  await Share.share({
+    title: '保存备份文件',
+    files: [fileUri],
+    dialogTitle: '保存备份文件到',
   });
 }
 
