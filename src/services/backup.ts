@@ -1,12 +1,11 @@
 // 备份和恢复功能
 import { Filesystem, Directory } from '@capacitor/filesystem'
-import { Share } from '@capacitor/share'
 import type { BackupData } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
 import { formatDateTime } from '@/utils'
 
-// 导出备份（先写入缓存，再通过分享让用户选择保存位置）
+// 导出备份
 export const exportBackup = async (): Promise<void> => {
   const cycles = await cycleService.getAll()
   const config = await configService.get()
@@ -25,25 +24,10 @@ export const exportBackup = async (): Promise<void> => {
   const jsonStr = JSON.stringify(backupData, null, 2);
   const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
 
-  // 写入缓存目录（始终可写，无需权限）
-  const result = await Filesystem.writeFile({
+  await Filesystem.writeFile({
     path: fileName,
     data: jsonStr,
-    directory: Directory.Cache,
-  });
-
-  // 获取缓存文件 URI（确保以 file:// 开头）
-  let fileUri = result.uri;
-  if (!fileUri.startsWith('file://')) {
-    fileUri = 'file://' + fileUri;
-  }
-
-  // 通过系统分享让用户选择保存位置
-  await Share.share({
-    title: '备份数据',
-    text: '24小时尿蛋白检测数据备份',
-    files: [fileUri],
-    dialogTitle: '保存备份文件到',
+    directory: Directory.Documents,
   });
 }
 

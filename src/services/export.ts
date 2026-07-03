@@ -1,7 +1,6 @@
 // 数据导出功能
 import * as XLSX from 'xlsx'
 import { Filesystem, Directory } from '@capacitor/filesystem'
-import { Share } from '@capacitor/share'
 import { formatDateTime } from '@/utils'
 import { cycleService } from './db'
 
@@ -67,28 +66,15 @@ export const exportToExcel = async (): Promise<void> => {
     XLSX.utils.book_append_sheet(wb, urinationWs, '排尿记录')
   }
 
-  // 导出文件（先写入缓存，再通过分享让用户选择保存位置）
+  // 导出文件
   const fileName = `24小时尿蛋白检测记录_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.xlsx`
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   const base64Data = arrayBufferToBase64(excelBuffer)
 
-  const result = await Filesystem.writeFile({
+  await Filesystem.writeFile({
     path: fileName,
     data: base64Data,
-    directory: Directory.Cache,
-  });
-
-  // 获取缓存文件 URI（确保以 file:// 开头）
-  let fileUri = result.uri;
-  if (!fileUri.startsWith('file://')) {
-    fileUri = 'file://' + fileUri;
-  }
-
-  await Share.share({
-    title: '导出Excel',
-    text: '24小时尿蛋白检测记录',
-    files: [fileUri],
-    dialogTitle: '保存Excel文件到',
+    directory: Directory.Documents,
   });
 }
 
