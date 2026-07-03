@@ -26,24 +26,23 @@ export const exportBackup = async (): Promise<void> => {
   const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
 
   // 写入缓存目录（始终可写，无需权限）
-  await Filesystem.writeFile({
+  const result = await Filesystem.writeFile({
     path: fileName,
     data: jsonStr,
     directory: Directory.Cache,
   });
 
-  // 获取缓存文件 URI
-  const fileUri = await Filesystem.getUri({
-    path: fileName,
-    directory: Directory.Cache,
-  });
+  // 获取缓存文件 URI（确保以 file:// 开头）
+  let fileUri = result.uri;
+  if (!fileUri.startsWith('file://')) {
+    fileUri = 'file://' + fileUri;
+  }
 
-  // 通过系统分享让用户选择保存位置（下载目录、文件管理器、云盘等）
+  // 通过系统分享让用户选择保存位置
   await Share.share({
     title: '备份数据',
     text: '24小时尿蛋白检测数据备份',
-    url: fileUri.uri,
-    files: [fileUri.uri],
+    files: [fileUri],
     dialogTitle: '保存备份文件到',
   });
 }

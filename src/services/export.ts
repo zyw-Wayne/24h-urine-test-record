@@ -72,22 +72,22 @@ export const exportToExcel = async (): Promise<void> => {
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   const base64Data = arrayBufferToBase64(excelBuffer)
 
-  await Filesystem.writeFile({
+  const result = await Filesystem.writeFile({
     path: fileName,
     data: base64Data,
     directory: Directory.Cache,
   });
 
-  const fileUri = await Filesystem.getUri({
-    path: fileName,
-    directory: Directory.Cache,
-  });
+  // 获取缓存文件 URI（确保以 file:// 开头）
+  let fileUri = result.uri;
+  if (!fileUri.startsWith('file://')) {
+    fileUri = 'file://' + fileUri;
+  }
 
   await Share.share({
     title: '导出Excel',
     text: '24小时尿蛋白检测记录',
-    url: fileUri.uri,
-    files: [fileUri.uri],
+    files: [fileUri],
     dialogTitle: '保存Excel文件到',
   });
 }
