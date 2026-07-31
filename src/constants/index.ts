@@ -51,7 +51,7 @@ export const DEFAULT_USER_CONFIG = {
 export const BACKUP_VERSION = '1.1.0'
 
 // App 版本号（需与 android/app/build.gradle 的 versionName 保持同步）
-export const APP_VERSION = '1.1.3'
+export const APP_VERSION = '1.2.0'
 
 // 尿常规 Selector 选项（供尿常规-尿蛋白/潜血表单使用）
 // 只保留数字写法；历史数据中的 ++/+++/++++ 仍会被 convertRoutineValue 映射表正确识别
