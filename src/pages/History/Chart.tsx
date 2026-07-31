@@ -53,20 +53,24 @@ const HistoryChart = ({ cycles }: HistoryChartProps) => {
     )
 
     const labels = sortedCycles.map((cycle) => formatDate(cycle.startTime))
-    const protein24hQuantitative = sortedCycles
-      .map((cycle) => cycle.testResults?.protein24hQuantitative || null)
-      .map((v) => (v === 0 ? null : v))
-    const creatinines = sortedCycles
-      .map((cycle) => cycle.testResults?.creatinine || null)
-      .map((v) => (v === 0 ? null : v))
+    // 仅把缺失值（undefined/null）转为 null，0 值保留显示（0 本身可能是异常值，不应被隐藏）
+    const protein24hQuantitative = sortedCycles.map((cycle) => {
+      const v = cycle.testResults?.protein24hQuantitative
+      return v === undefined || v === null ? null : v
+    })
+    const creatinines = sortedCycles.map((cycle) => {
+      const v = cycle.testResults?.creatinine
+      return v === undefined || v === null ? null : v
+    })
     const proteinRoutineValues = sortedCycles
       .map((cycle) => convertRoutineValue(cycle.testResults?.proteinRoutine))
     const occultBloodValues = sortedCycles
       .map((cycle) => convertRoutineValue(cycle.testResults?.occultBlood))
 
-    const uricAcids = sortedCycles
-      .map((cycle) => cycle.testResults?.uricAcid || null)
-      .map((v) => (v === 0 ? null : v))
+    const uricAcids = sortedCycles.map((cycle) => {
+      const v = cycle.testResults?.uricAcid
+      return v === undefined || v === null ? null : v
+    })
 
     const hasUricAcid = uricAcids.some((v: number | null) => v !== null)
 
