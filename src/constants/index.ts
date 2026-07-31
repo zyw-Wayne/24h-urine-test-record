@@ -54,6 +54,7 @@ export const BACKUP_VERSION = '1.1.0'
 export const APP_VERSION = '1.1.3'
 
 // 尿常规 Selector 选项（供尿常规-尿蛋白/潜血表单使用）
+// 只保留数字写法；历史数据中的 ++/+++/++++ 仍会被 convertRoutineValue 映射表正确识别
 export const URINE_ROUTINE_OPTIONS = [
   { label: '阴性(-)', value: '阴性(-)' },
   { label: '弱阳性(±)', value: '弱阳性(±)' },
@@ -61,8 +62,5 @@ export const URINE_ROUTINE_OPTIONS = [
   { label: '2+', value: '2+' },
   { label: '3+', value: '3+' },
   { label: '4+', value: '4+' },
-  { label: '++', value: '++' },
-  { label: '+++', value: '+++' },
-  { label: '++++', value: '++++' },
 ]
 
