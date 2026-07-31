@@ -24,39 +24,16 @@ const db = new UrineTestDatabase()
 export const cycleService = {
   // 获取所有检测周期
   async getAll(): Promise<TestCycle[]> {
-    return this._batchLoadRecords(
+    return batchLoadRecords(
       await db.testCycles.orderBy('createdAt').reverse().toArray()
     )
   },
 
   // 获取指定时间范围之后的检测周期（在数据库侧过滤，避免拉取全量数据）
   async getByTimeRange(since: string): Promise<TestCycle[]> {
-    return this._batchLoadRecords(
+    return batchLoadRecords(
       await db.testCycles.where('createdAt').above(since).reverse().toArray()
     )
-  },
-
-  // 内部：批量加载排尿记录并赋值给周期列表（复用逻辑）
-  async _batchLoadRecords(cycles: TestCycle[]): Promise<TestCycle[]> {
-    if (cycles.length === 0) return cycles
-
-    const cycleIds = cycles.map(c => c.id)
-    const allRecords = await db.urinationRecords
-      .where('cycleId')
-      .anyOf(cycleIds)
-      .sortBy('time')
-
-    const recordsByCycleId = new Map<string, UrinationRecord[]>()
-    for (const record of allRecords) {
-      const group = recordsByCycleId.get(record.cycleId) || []
-      group.push(record)
-      recordsByCycleId.set(record.cycleId, group)
-    }
-
-    for (const cycle of cycles) {
-      cycle.urinationRecords = recordsByCycleId.get(cycle.id) || []
-    }
-    return cycles
   },
 
   // 获取进行中的检测周期
@@ -113,7 +90,8 @@ export const cycleService = {
   },
 
   // 更新检测周期
-  async update(id: string, updates: Partial<TestCycle>): Promise<void> {
+  // 运行时字段 urinationRecords 不持久化，类型上禁止传入避免误写
+  async update(id: string, updates: Omit<Partial<TestCycle>, 'urinationRecords'>): Promise<void> {
     await db.testCycles.update(id, {
       ...updates,
       updatedAt: new Date().toISOString(),
@@ -132,6 +110,29 @@ export const cycleService = {
     await db.urinationRecords.clear()
     await db.testCycles.clear()
   },
+}
+
+// 内部：批量加载排尿记录并赋值给周期列表（模块级函数，避免 this 绑定问题）
+async function batchLoadRecords(cycles: TestCycle[]): Promise<TestCycle[]> {
+  if (cycles.length === 0) return cycles
+
+  const cycleIds = cycles.map(c => c.id)
+  const allRecords = await db.urinationRecords
+    .where('cycleId')
+    .anyOf(cycleIds)
+    .sortBy('time')
+
+  const recordsByCycleId = new Map<string, UrinationRecord[]>()
+  for (const record of allRecords) {
+    const group = recordsByCycleId.get(record.cycleId) || []
+    group.push(record)
+    recordsByCycleId.set(record.cycleId, group)
+  }
+
+  for (const cycle of cycles) {
+    cycle.urinationRecords = recordsByCycleId.get(cycle.id) || []
+  }
+  return cycles
 }
 
 // 排尿记录相关操作

@@ -1,11 +1,11 @@
 // 数据导出功能
 import * as XLSX from 'xlsx'
-import { Filesystem, Directory } from '@capacitor/filesystem'
 import { formatDateTime } from '@/utils'
 import { cycleService } from './db'
+import { saveFile, type SaveFileResult } from './fileSave'
 
-// 导出为Excel
-export const exportToExcel = async (): Promise<void> => {
+// 导出为Excel（返回文件实际保存方式，供调用方展示准确提示）
+export const exportToExcel = async (): Promise<SaveFileResult> => {
   const cycles = await cycleService.getAll()
 
   // Sheet 1：检测周期
@@ -71,11 +71,7 @@ export const exportToExcel = async (): Promise<void> => {
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   const base64Data = arrayBufferToBase64(excelBuffer)
 
-  await Filesystem.writeFile({
-    path: fileName,
-    data: base64Data,
-    directory: Directory.Documents,
-  });
+  return saveFile(fileName, base64Data)
 }
 
 /**

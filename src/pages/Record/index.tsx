@@ -28,6 +28,25 @@ import TimerDisplay from '@/components/Common/TimerDisplay'
 import TestResultDisplay from '@/components/Common/TestResultDisplay'
 
 
+// 周期进度条子组件 — 独立管理每秒刷新，避免全页每秒重渲染
+const calcCycleProgress = (startTime: string): number => {
+  const start = dayjs(startTime)
+  const elapsed = dayjs().diff(start)
+  return Math.min((elapsed / CYCLE_DURATION) * 100, 100)
+}
+
+const CycleProgress = ({ startTime }: { startTime: string }) => {
+  const [percent, setPercent] = useState(() => calcCycleProgress(startTime))
+
+  useEffect(() => {
+    setPercent(calcCycleProgress(startTime))
+    const timer = setInterval(() => setPercent(calcCycleProgress(startTime)), 1000)
+    return () => clearInterval(timer)
+  }, [startTime])
+
+  return <ProgressBar percent={percent} style={{ marginTop: '16px' }} />
+}
+
 const RecordPage = () => {
   const [currentCycle, setCurrentCycle] = useState<TestCycle | null>(null)
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null)
@@ -228,7 +247,7 @@ const RecordPage = () => {
     proteinRoutine?: string
     occultBlood?: string
     creatinine: number
-    uricAcid: number
+    uricAcid?: number
     specificGravity: number
     ph: number
   }) => {
@@ -261,20 +280,11 @@ const RecordPage = () => {
     }
   }
 
-  // 计算进度（useMemo 避免每秒重渲染时重复计算）
-  const progress = useMemo(() => {
-    if (!currentCycle) return 0
-    const start = dayjs(currentCycle.startTime)
-    const now = dayjs()
-    const elapsed = now.diff(start)
-    return Math.min((elapsed / CYCLE_DURATION) * 100, 100)
-  }, [currentCycle?.startTime])
-
   // 计算平均尿量
   const averageVolume = useMemo(() => {
     if (!currentCycle || currentCycle.urinationRecords.length === 0) return 0
     return Math.round(currentCycle.totalVolume / currentCycle.urinationRecords.length)
-  }, [currentCycle?.totalVolume, currentCycle?.urinationRecords.length])
+  }, [currentCycle])
 
   // 获取正常值范围（根据用户性别）
   const normalRanges = getNormalRanges(userConfig || undefined)
@@ -344,7 +354,7 @@ const RecordPage = () => {
                   </div>
                   <TimerDisplay startTime={currentCycle.startTime} />
                 </div>
-                <ProgressBar percent={progress} style={{ marginTop: '16px' }} />
+                <CycleProgress startTime={currentCycle.startTime} />
                 <Button
                   color="danger"
                   size="small"
@@ -389,7 +399,7 @@ const RecordPage = () => {
               <span>平均每次尿量:</span>
               <span style={{ fontWeight: 'bold' }}>{formatVolume(averageVolume, userConfig?.unit.volume)}</span>
             </div>
-            {currentCycle.testResults && (
+            {currentCycle.testResults && currentCycle.testResults.proteinTotal24h !== undefined && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>24小时总蛋白:</span>
                 <span

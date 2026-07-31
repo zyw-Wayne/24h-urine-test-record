@@ -19,7 +19,7 @@ import { cycleService, configService } from '@/services/db'
 import { formatDateTime, calculateProteinTotal24h, formatVolume } from '@/utils'
 import { getNormalRanges } from '@/utils/normalRanges'
 import { URINE_ROUTINE_OPTIONS } from '@/constants'
-import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules, uricAcidRules, uricAcidRulesOptional } from '@/utils/validators'
+import { totalVolumeRules, protein24hRules, creatinineRules, specificGravityRules, phRules, proteinTotal24hRules, uricAcidRulesOptional } from '@/utils/validators'
 import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
@@ -40,31 +40,54 @@ const HistoryPage = () => {
   const [manualForm] = Form.useForm()
   const startTime = Form.useWatch('startTime', manualForm)
 
+  // 请求序号：快速切换筛选时丢弃过期响应，防止旧请求覆盖新数据
+  const loadSeqRef = useRef(0)
+
   useEffect(() => {
     const loadData = async () => {
-      const config = await configService.get()
-      setUserConfig(config)
-      await loadCycles('all')
-      setInitialLoading(false)
+      try {
+        const config = await configService.get()
+        setUserConfig(config)
+        await loadCycles('all')
+      } catch (error) {
+        console.error('加载历史页初始数据失败', error)
+        Toast.show({ content: '加载历史记录失败', icon: 'fail' })
+      } finally {
+        // 确保 loading 态无论如何都被清除，避免卡死在加载中
+        setInitialLoading(false)
+      }
     }
     loadData()
   }, [])
 
-  // timeRange 变化时重新加载
-
   const loadCycles = async (range?: string) => {
+    const seq = ++loadSeqRef.current
     setLoading(true)
     try {
       const result = (range && range !== 'all')
         ? await cycleService.getByTimeRange(dayjs().subtract(range === '3months' ? 3 : 6, 'month').toISOString())
         : await cycleService.getAll()
+      if (seq !== loadSeqRef.current) return // 已有更新的请求，丢弃本次结果
       setCycles(result)
     } catch (error) {
+      if (seq !== loadSeqRef.current) return
       Toast.show({ content: '加载历史记录失败', icon: 'fail' })
     } finally {
-      setLoading(false)
+      if (seq === loadSeqRef.current) {
+        setLoading(false)
+      }
     }
   }
+
+  // timeRange 变化时重新加载（首次挂载已由 loadData 加载，用 ref 跳过避免重复请求）
+  const skipFirstRangeLoad = useRef(true)
+  useEffect(() => {
+    if (skipFirstRangeLoad.current) {
+      skipFirstRangeLoad.current = false
+      return
+    }
+    loadCycles(timeRange)
+  }, [timeRange])
 
   const handleDelete = async (id: string) => {
     const result = await Dialog.confirm({
@@ -157,7 +180,7 @@ const HistoryPage = () => {
         proteinRoutine: values.proteinRoutine,
         occultBlood: values.occultBlood,
         creatinine: values.creatinine,
-        uricAcid: values.uricAcid as number,
+        uricAcid: values.uricAcid,
         specificGravity: values.specificGravity,
         ph: values.ph,
         testedAt: startTime,
@@ -513,7 +536,8 @@ const HistoryPage = () => {
             <Form.Item
               name="uricAcid"
               label="尿酸(μmol/L)"
-              rules={editingCycle?.testResults?.uricAcid === undefined ? uricAcidRulesOptional : uricAcidRules}
+              // 尿酸为可选字段（类型允许 undefined），统一用可选规则，避免"基于旧值切换必填"导致行为不一致
+              rules={uricAcidRulesOptional}
             >
               <Input type="number" placeholder="请输入尿酸" inputMode="decimal" />
             </Form.Item>

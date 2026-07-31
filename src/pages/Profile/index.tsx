@@ -14,7 +14,8 @@ import {
 import { exportToExcel } from '@/services/export'
 import { exportBackup, importBackup } from '@/services/backup'
 import { cycleService, configService } from '@/services/db'
-import { DEFAULT_USER_CONFIG } from '@/constants'
+import type { SaveFileResult } from '@/services/fileSave'
+import { DEFAULT_USER_CONFIG, APP_VERSION } from '@/constants'
 import type { UserConfig } from '@/types'
 
 const ProfilePage = () => {
@@ -44,13 +45,21 @@ const ProfilePage = () => {
     if (configFormVisible && config) {
       configForm.setFieldsValue(config)
     }
-  }, [configFormVisible, config])
+  }, [configFormVisible, config, configForm])
 
   const handleSaveConfig = async (values: UserConfig) => {
     setLoading(true)
     try {
-      await configService.save(values)
-      setConfig(values)
+      // 表单已不再包含 unit.protein（该设置已移除），合并现有值防止覆盖丢失
+      const merged: UserConfig = {
+        ...values,
+        unit: {
+          ...config.unit,
+          ...values.unit,
+        },
+      }
+      await configService.save(merged)
+      setConfig(merged)
       setConfigFormVisible(false)
       // 同步更新深色主题
       document.documentElement.setAttribute('data-prefers-color-scheme', values.theme)
@@ -62,13 +71,23 @@ const ProfilePage = () => {
     }
   }
 
+  const exportResultToast = (label: '备份' | '导出', result: SaveFileResult) => {
+    if (result === 'documents') {
+      return `${label}成功，文件已保存到文档目录`
+    }
+    if (result === 'shared') {
+      return `${label}成功，请在分享面板中选择保存位置`
+    }
+    return `${label}已生成，但未保存文件`
+  }
+
   const handleExportExcel = async () => {
     setLoading(true)
     try {
-      await exportToExcel()
-      Toast.show({ content: '导出成功，文件已保存到文档目录', icon: 'success' })
+      const result = await exportToExcel()
+      Toast.show({ content: exportResultToast('导出', result), icon: 'success' })
     } catch (error) {
-      Toast.show({ content: '导出失败', icon: 'fail' })
+      Toast.show({ content: '导出失败: ' + String((error as Error)?.message || error).slice(0, 50), icon: 'fail' })
     } finally {
       setLoading(false)
     }
@@ -77,10 +96,10 @@ const ProfilePage = () => {
   const handleExportBackup = async () => {
     setLoading(true)
     try {
-      await exportBackup()
-      Toast.show({ content: '备份成功', icon: 'success' })
-    } catch (error: any) {
-      Toast.show({ content: '备份失败: ' + String(error?.message || error).slice(0, 50), icon: 'fail' })
+      const result = await exportBackup()
+      Toast.show({ content: exportResultToast('备份', result), icon: 'success' })
+    } catch (error) {
+      Toast.show({ content: '备份失败: ' + String((error as Error)?.message || error).slice(0, 50), icon: 'fail' })
     } finally {
       setLoading(false)
     }
@@ -206,7 +225,7 @@ const ProfilePage = () => {
             <div>
               <div style={{ fontWeight: 'bold' }}>单位设置</div>
               <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>
-                尿量: {config.unit.volume} | 蛋白: {config.unit.protein}
+                尿量: {config.unit.volume}
               </div>
             </div>
           </List.Item>
@@ -258,7 +277,7 @@ const ProfilePage = () => {
       <Card title="关于" style={{ marginTop: '16px' }}>
         <div style={{ fontSize: '14px', color: 'var(--adm-color-text-secondary)', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>24小时尿蛋白检测记录系统</div>
-          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version 1.1.3</div>
+          <div style={{ fontSize: '12px', color: 'var(--adm-color-weak)' }}>Version {APP_VERSION}</div>
         </div>
       </Card>
 
@@ -318,18 +337,6 @@ const ProfilePage = () => {
               options={[
                 { label: '毫升 (ml)', value: 'ml' },
                 { label: '升 (L)', value: 'l' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name={['unit', 'protein']}
-            label="蛋白单位"
-            rules={[{ required: true, message: '请选择单位' }]}
-          >
-            <Selector
-              options={[
-                { label: '毫克 (mg)', value: 'mg' },
-                { label: '克 (g)', value: 'g' },
               ]}
             />
           </Form.Item>

@@ -1,13 +1,13 @@
 // 备份和恢复功能
-import { Filesystem, Directory } from '@capacitor/filesystem'
-import { Share } from '@capacitor/share'
+import dayjs from 'dayjs'
 import type { BackupData } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
+import { saveFile, type SaveFileResult } from './fileSave'
 import { formatDateTime } from '@/utils'
 
-// 导出备份
-export const exportBackup = async (): Promise<void> => {
+// 导出备份（返回文件实际保存方式，供调用方展示准确提示）
+export const exportBackup = async (): Promise<SaveFileResult> => {
   const cycles = await cycleService.getAll()
   const config = await configService.get()
 
@@ -22,33 +22,10 @@ export const exportBackup = async (): Promise<void> => {
     },
   }
 
-  const jsonStr = JSON.stringify(backupData, null, 2);
-  const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`;
+  const jsonStr = JSON.stringify(backupData, null, 2)
+  const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`
 
-  // 优先写入 Documents（部分 Android 版本支持）
-  try {
-    await Filesystem.writeFile({
-      path: fileName,
-      data: jsonStr,
-      directory: Directory.Documents,
-    });
-    return;
-  } catch (e) {
-    // Documents 不可写（Android 11+ 限制），走 Share 方案
-  }
-
-  // 回退：写入缓存 → 分享
-  const result = await Filesystem.writeFile({
-    path: fileName,
-    data: jsonStr,
-    directory: Directory.Cache,
-  });
-  const fileUri = result.uri.startsWith('file://') ? result.uri : 'file://' + result.uri;
-  await Share.share({
-    title: '保存备份文件',
-    files: [fileUri],
-    dialogTitle: '保存备份文件到',
-  });
+  return saveFile(fileName, jsonStr)
 }
 
 // 导入备份（使用事务保证原子性：失败时自动回滚）
@@ -71,9 +48,44 @@ export const importBackup = async (file: File): Promise<{ warnings: string[] } |
           await db.testCycles.clear()
           await db.urinationRecords.clear()
 
-          for (const cycle of backupData.testCycles) {
+          // 逐条校验数据格式，防止脏备份文件导致页面崩溃
+          const VALID_STATUSES = ['ongoing', 'completed', 'manual'] as string[]
+          for (const [index, cycle] of backupData.testCycles.entries()) {
+            const recordNo = index + 1
+            if (!cycle || typeof cycle !== 'object') {
+              throw new Error(`备份文件第 ${recordNo} 条记录无效`)
+            }
+            if (!cycle.id || typeof cycle.id !== 'string') {
+              throw new Error(`备份文件第 ${recordNo} 条记录缺少有效的周期 ID`)
+            }
+            // 先确认是 string 再校验，dayjs(undefined) 会被当作当前时间而通过校验
+            if (typeof cycle.startTime !== 'string' || !dayjs(cycle.startTime).isValid()) {
+              throw new Error(`备份文件第 ${recordNo} 条记录的开始时间无效`)
+            }
+            if (typeof cycle.totalVolume !== 'number' || !isFinite(cycle.totalVolume)) {
+              throw new Error(`备份文件第 ${recordNo} 条记录的总尿量无效`)
+            }
+            if (!VALID_STATUSES.includes(cycle.status)) {
+              throw new Error(`备份文件第 ${recordNo} 条记录的状态无效`)
+            }
+
             const records = cycle.urinationRecords || []
             const { urinationRecords, ...cycleData } = cycle
+
+            // 校验排尿记录明细
+            for (const [rIndex, record] of records.entries()) {
+              if (
+                !record ||
+                !record.id ||
+                !record.cycleId ||
+                typeof record.time !== 'string' ||
+                !dayjs(record.time).isValid() ||
+                typeof record.volume !== 'number' ||
+                !isFinite(record.volume)
+              ) {
+                throw new Error(`备份文件第 ${recordNo} 条记录的排尿明细（第 ${rIndex + 1} 条）无效`)
+              }
+            }
 
             // 直接添加到数据库（保留原始ID和时间戳）
             await db.testCycles.add({
