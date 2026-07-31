@@ -72,13 +72,10 @@ const ProfilePage = () => {
   }
 
   const exportResultToast = (label: '备份' | '导出', result: SaveFileResult) => {
-    if (result === 'documents') {
-      return `${label}成功，文件已保存到文档目录`
+    if (result === 'saved') {
+      return `${label}成功`
     }
-    if (result === 'shared') {
-      return `${label}成功，请在分享面板中选择保存位置`
-    }
-    return `${label}已生成，但未保存文件`
+    return `${label}已取消`
   }
 
   const handleExportExcel = async () => {

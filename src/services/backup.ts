@@ -25,7 +25,7 @@ export const exportBackup = async (): Promise<SaveFileResult> => {
   const jsonStr = JSON.stringify(backupData, null, 2)
   const fileName = `24h_urine_test_backup_${formatDateTime(new Date(), 'YYYY-MM-DD_HH-mm-ss')}.json`
 
-  return saveFile(fileName, jsonStr)
+  return saveFile(fileName, jsonStr, 'application/json')
 }
 
 // 导入备份（使用事务保证原子性：失败时自动回滚）

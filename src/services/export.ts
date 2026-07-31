@@ -71,7 +71,7 @@ export const exportToExcel = async (): Promise<SaveFileResult> => {
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   const base64Data = arrayBufferToBase64(excelBuffer)
 
-  return saveFile(fileName, base64Data)
+  return saveFile(fileName, base64Data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
 
 /**
