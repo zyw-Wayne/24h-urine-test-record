@@ -38,3 +38,6 @@ android/app/build/
 android/.gradle/
 android/captures/
 android/.idea/
+
+# Android 签名文件（私钥不入库；密码硬编码在 build.gradle 中，凭此 keystore 才有效）
+android/app/keystore/
