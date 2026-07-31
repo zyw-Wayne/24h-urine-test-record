@@ -17,6 +17,7 @@ import { cycleService, configService } from '@/services/db'
 import type { SaveFileResult } from '@/services/fileSave'
 import { DEFAULT_USER_CONFIG, APP_VERSION } from '@/constants'
 import type { UserConfig } from '@/types'
+import { useBackHandler } from '@/utils/useBackHandler'
 
 const ProfilePage = () => {
   const [config, setConfig] = useState<UserConfig>(DEFAULT_USER_CONFIG)
@@ -46,6 +47,15 @@ const ProfilePage = () => {
       configForm.setFieldsValue(config)
     }
   }, [configFormVisible, config, configForm])
+
+  // Android 返回键：优先关闭配置编辑弹窗
+  useBackHandler(() => {
+    if (configFormVisible) {
+      setConfigFormVisible(false)
+      return true
+    }
+    return false
+  })
 
   const handleSaveConfig = async (values: UserConfig) => {
     setLoading(true)

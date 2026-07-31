@@ -24,6 +24,7 @@ import HistoryDetail from './Detail'
 import HistoryChart from './Chart'
 import Loading from '@/components/Common/Loading'
 import EmptyState from '@/components/Common/EmptyState'
+import { useBackHandler } from '@/utils/useBackHandler'
 
 const HistoryPage = () => {
   const [cycles, setCycles] = useState<TestCycle[]>([])
@@ -231,6 +232,26 @@ const HistoryPage = () => {
 
   // cycles 已由 loadCycles 根据 timeRange 在服务端过滤
   const normalRanges = getNormalRanges(userConfig || undefined)
+
+  // Android 返回键：优先关闭当前打开的弹窗（详情/图表/手动录入）
+  useBackHandler(() => {
+    if (detailVisible) {
+      setDetailVisible(false)
+      setSelectedCycle(null)
+      return true
+    }
+    if (chartVisible) {
+      setChartVisible(false)
+      return true
+    }
+    if (manualFormVisible) {
+      setManualFormVisible(false)
+      setEditingCycle(null)
+      manualForm.resetFields()
+      return true
+    }
+    return false
+  })
 
   return (
     <div style={{ 

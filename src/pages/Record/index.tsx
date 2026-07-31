@@ -26,6 +26,7 @@ import Loading from '@/components/Common/Loading'
 import EmptyState from '@/components/Common/EmptyState'
 import TimerDisplay from '@/components/Common/TimerDisplay'
 import TestResultDisplay from '@/components/Common/TestResultDisplay'
+import { useBackHandler } from '@/utils/useBackHandler'
 
 
 // 周期进度条子组件 — 独立管理每秒刷新，避免全页每秒重渲染
@@ -296,6 +297,19 @@ const RecordPage = () => {
 
   // 获取正常值范围（根据用户性别）
   const normalRanges = getNormalRanges(userConfig || undefined)
+
+  // Android 返回键：优先关闭当前打开的弹窗
+  useBackHandler(() => {
+    if (urinationFormVisible) {
+      setUrinationFormVisible(false)
+      return true
+    }
+    if (testResultFormVisible) {
+      setTestResultFormVisible(false)
+      return true
+    }
+    return false
+  })
 
   if (initialLoading) {
     return <Loading fullScreen text="加载中..." />
