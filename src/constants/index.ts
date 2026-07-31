@@ -33,17 +33,6 @@ export const NORMAL_RANGES_URIC_ACID = {
   },
 }
 
-// 兼容旧代码（使用女性范围作为默认值）
-export const NORMAL_RANGES = {
-  PROTEIN_24H: NORMAL_RANGES_COMMON.PROTEIN_24H,
-  CREATININE_MIN: NORMAL_RANGES_CREATININE.FEMALE.MIN,
-  CREATININE_MAX: NORMAL_RANGES_CREATININE.FEMALE.MAX,
-  SPECIFIC_GRAVITY_MIN: NORMAL_RANGES_COMMON.SPECIFIC_GRAVITY_MIN,
-  SPECIFIC_GRAVITY_MAX: NORMAL_RANGES_COMMON.SPECIFIC_GRAVITY_MAX,
-  PH_MIN: NORMAL_RANGES_COMMON.PH_MIN,
-  PH_MAX: NORMAL_RANGES_COMMON.PH_MAX,
-}
-
 // 检测周期时长（毫秒）
 export const CYCLE_DURATION = 24 * 60 * 60 * 1000 // 24小时
 
@@ -61,6 +50,9 @@ export const DEFAULT_USER_CONFIG = {
 // 备份文件版本
 export const BACKUP_VERSION = '1.1.0'
 
+// App 版本号（需与 android/app/build.gradle 的 versionName 保持同步）
+export const APP_VERSION = '1.1.3'
+
 // 尿常规 Selector 选项（供尿常规-尿蛋白/潜血表单使用）
 export const URINE_ROUTINE_OPTIONS = [
   { label: '阴性(-)', value: '阴性(-)' },
@@ -73,8 +65,4 @@ export const URINE_ROUTINE_OPTIONS = [
   { label: '+++', value: '+++' },
   { label: '++++', value: '++++' },
 ]
-
-// 以下函数已迁移至 src/utils/index.ts，为保持向后兼容重新导出
-// 新代码请直接从 '@/utils' 导入
-export { ROUTINE_VALUE_TO_LABEL, convertRoutineValue, getRoutineLabel } from '@/utils'
 

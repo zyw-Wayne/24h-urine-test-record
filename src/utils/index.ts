@@ -44,12 +44,6 @@ export const formatVolume = (ml: number, unit: 'ml' | 'l' = 'ml'): string => {
   return `${ml} ml`
 }
 
-// 根据用户配置格式化蛋白浓度
-export const formatProteinConcentration = (mgPerL: number, _unit: 'mg' | 'g' = 'mg'): string => {
-  // 输入值始终是 mg/L，显示单位切换不影响数值呈现方式
-  return `${mgPerL} mg/L`
-}
-
 // 计算24小时总蛋白
 export const calculateProteinTotal24h = (
   protein: number,

@@ -47,7 +47,7 @@
 ### ⚙️ 用户设置
 
 - **个人信息**：昵称、性别、年龄（性别影响肌酐正常值判定）
-- **单位设置**：尿量 ml/L、蛋白 mg/g
+- **单位设置**：尿量 ml/L
 - **深色主题**：浅色 / 深色一键切换（antd-mobile 原生暗色方案）
 - **使用说明**：内置检测流程、注意事项、正常值参考
 
@@ -148,7 +148,8 @@ cd android
 │   ├── services/           #   数据层
 │   │   ├── db.ts           #     IndexedDB CRUD
 │   │   ├── export.ts       #     Excel 导出
-│   │   └── backup.ts       #     JSON 备份/恢复
+│   │   ├── backup.ts       #     JSON 备份/恢复
+│   │   └── fileSave.ts     #     统一文件保存（Documents → Cache+Share 回退）
 │   ├── utils/              #   工具函数
 │   ├── types/              #   TypeScript 类型
 │   └── constants/          #   常量（正常值、尿常规映射表）
@@ -180,7 +181,17 @@ cd android
 
 ---
 
-## 构建产物分析
+### 测试
+
+纯函数逻辑（正常值判定、表单校验、24h 总蛋白计算等）使用 Vitest 编写了单元测试：
+
+```bash
+npm test
+```
+
+---
+
+# 构建产物分析
 
 生产构建使用 `React.lazy` 路由级代码分割 + Vite `manualChunks`：
 
@@ -233,6 +244,12 @@ npm run build
 ---
 
 ## 注意事项
+
+### xlsx 依赖来源
+
+`xlsx` 通过 SheetJS 官方 CDN（`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`）安装，而非 npm registry。
+原因是 npm registry 上的 `xlsx` 停止在 `0.18.5`（含 CVE-2023-30533 原型污染漏洞），安全修复版仅由官方 CDN 分发。
+升级该依赖时需手动修改 `package.json` 中的 URL。安装依赖需能访问 `cdn.sheetjs.com`，内网/离线环境请留意。
 
 ### 检测流程
 

@@ -8,7 +8,7 @@
 import { StatusBar, Style } from '@capacitor/status-bar'
 
 export async function initSafeArea(): Promise<number> {
-  const isNative = !!(window as any).Capacitor?.isNativePlatform()
+  const isNative = !!(window as unknown as { Capacitor?: { isNativePlatform: () => boolean } }).Capacitor?.isNativePlatform()
   if (!isNative) return 0
 
   try {
