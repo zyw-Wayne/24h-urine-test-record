@@ -255,13 +255,21 @@ const RecordPage = () => {
 
     setLoading(true)
     try {
+      // antd Input type="number" 返回字符串，统一转数字后再入库
+      const protein24hQuantitative = Number(values.protein24hQuantitative)
       const proteinTotal24h = calculateProteinTotal24h(
-        values.protein24hQuantitative,
+        protein24hQuantitative,
         currentCycle.totalVolume,
         userConfig?.unit.volume || 'ml'
       )
       const testResult: TestResult = {
-        ...values,
+        protein24hQuantitative,
+        proteinRoutine: values.proteinRoutine,
+        occultBlood: values.occultBlood,
+        creatinine: Number(values.creatinine),
+        uricAcid: values.uricAcid !== undefined ? Number(values.uricAcid) : undefined,
+        specificGravity: Number(values.specificGravity),
+        ph: Number(values.ph),
         proteinTotal24h,
         testedAt: new Date().toISOString(),
       }

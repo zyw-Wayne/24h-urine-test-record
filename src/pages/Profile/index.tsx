@@ -50,19 +50,27 @@ const ProfilePage = () => {
   const handleSaveConfig = async (values: UserConfig) => {
     setLoading(true)
     try {
+      // antd-mobile Selector 单选可能返回数组，归一化为字符串后入库
+      const theme = Array.isArray(values.theme)
+        ? values.theme[0] ?? 'light'
+        : values.theme
+      const normalized: UserConfig = {
+        ...values,
+        theme,
+      }
       // 表单已不再包含 unit.protein（该设置已移除），合并现有值防止覆盖丢失
       const merged: UserConfig = {
-        ...values,
+        ...normalized,
         unit: {
           ...config.unit,
-          ...values.unit,
+          ...normalized.unit,
         },
       }
       await configService.save(merged)
       setConfig(merged)
       setConfigFormVisible(false)
       // 同步更新深色主题
-      document.documentElement.setAttribute('data-prefers-color-scheme', values.theme)
+      document.documentElement.setAttribute('data-prefers-color-scheme', theme)
       Toast.show({ content: '保存成功', icon: 'success' })
     } catch (error) {
       Toast.show({ content: '保存失败', icon: 'fail' })

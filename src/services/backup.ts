@@ -1,6 +1,6 @@
 // 备份和恢复功能
 import dayjs from 'dayjs'
-import type { BackupData } from '@/types'
+import type { BackupData, TestResult } from '@/types'
 import { BACKUP_VERSION } from '@/constants'
 import db, { cycleService, configService } from './db'
 import { saveFile, type SaveFileResult } from './fileSave'
@@ -62,7 +62,9 @@ export const importBackup = async (file: File): Promise<{ warnings: string[] } |
             if (typeof cycle.startTime !== 'string' || !dayjs(cycle.startTime).isValid()) {
               throw new Error(`备份文件第 ${recordNo} 条记录的开始时间无效`)
             }
-            if (typeof cycle.totalVolume !== 'number' || !isFinite(cycle.totalVolume)) {
+            // 兼容数字和数字字符串（antd Input 曾把数值存成字符串）
+            const totalVolume = toFiniteNumber(cycle.totalVolume)
+            if (totalVolume === undefined) {
               throw new Error(`备份文件第 ${recordNo} 条记录的总尿量无效`)
             }
             if (!VALID_STATUSES.includes(cycle.status)) {
@@ -80,28 +82,36 @@ export const importBackup = async (file: File): Promise<{ warnings: string[] } |
                 !record.cycleId ||
                 typeof record.time !== 'string' ||
                 !dayjs(record.time).isValid() ||
-                typeof record.volume !== 'number' ||
-                !isFinite(record.volume)
+                toFiniteNumber(record.volume) === undefined
               ) {
                 throw new Error(`备份文件第 ${recordNo} 条记录的排尿明细（第 ${rIndex + 1} 条）无效`)
               }
             }
 
+            // 归一化类型后写入：旧数据/表单曾把数值字段存成字符串、Selector 存成数组
+            const normalizedTestResults = cycleData.testResults
+              ? normalizeTestResults(cycleData.testResults)
+              : undefined
+
             // 直接添加到数据库（保留原始ID和时间戳）
             await db.testCycles.add({
               ...cycleData,
+              totalVolume,
+              testResults: normalizedTestResults,
               urinationRecords: [],
               updatedAt: new Date().toISOString(),
             })
 
-            // 恢复排尿记录
+            // 恢复排尿记录（volume 归一化为数字）
             for (const record of records) {
-              await db.urinationRecords.add(record)
+              await db.urinationRecords.add({
+                ...record,
+                volume: toFiniteNumber(record.volume) as number,
+              })
             }
 
             // 使用备份中原有的总尿量值，避免重复计算
-            // totalVolume 已在备份数据中保存，直接使用 cycle.totalVolume
-            await db.testCycles.update(cycle.id, { totalVolume: cycleData.totalVolume })
+            await db.testCycles.update(cycle.id, { totalVolume })
           }
         })
 
@@ -116,7 +126,14 @@ export const importBackup = async (file: File): Promise<{ warnings: string[] } |
         }
 
         // 恢复用户配置（独立事务，不影响主数据恢复）
-        await configService.save(backupData.userConfig)
+        // 归一化：旧数据中 theme 可能因 Selector 单选被存成数组
+        const savedConfig = {
+          ...backupData.userConfig,
+          theme: Array.isArray(backupData.userConfig.theme)
+            ? backupData.userConfig.theme[0] ?? 'light'
+            : backupData.userConfig.theme,
+        }
+        await configService.save(savedConfig)
 
         resolve(warnings.length > 0 ? { warnings } : undefined)
       } catch (error) {
@@ -130,5 +147,54 @@ export const importBackup = async (file: File): Promise<{ warnings: string[] } |
 
     reader.readAsText(file)
   })
+}
+
+// 将可能是数字字符串的值归一化为有限数字；无法转换返回 undefined
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return isFinite(value) ? value : undefined
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value)
+    return isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
+// 归一化检测结果的字段类型：数字字段兼容字符串、Selector 单选值兼容数组
+function normalizeTestResults(testResults: Partial<TestResult>) {
+  const numberFields = [
+    'protein24hQuantitative',
+    'proteinTotal24h',
+    'creatinine',
+    'uricAcid',
+    'specificGravity',
+    'ph',
+  ] as const
+
+  const normalized: Record<string, unknown> = { ...testResults }
+  for (const field of numberFields) {
+    const value = testResults[field]
+    if (value === undefined || value === null) {
+      delete normalized[field]
+      continue
+    }
+    const num = toFiniteNumber(value)
+    if (num !== undefined) {
+      normalized[field] = num
+    }
+  }
+
+  // 尿常规/潜血：antd-mobile Selector 单选在旧版本曾存为数组，取第一个元素
+  for (const field of ['proteinRoutine', 'occultBlood'] as const) {
+    const value = testResults[field]
+    if (Array.isArray(value)) {
+      normalized[field] = value.length > 0 ? String(value[0]) : undefined
+    } else if (value !== undefined) {
+      normalized[field] = String(value)
+    }
+  }
+
+  return normalized as unknown as TestResult
 }
 

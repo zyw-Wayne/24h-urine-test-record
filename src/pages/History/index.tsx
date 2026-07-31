@@ -160,29 +160,39 @@ const HistoryPage = () => {
   }) => {
     setLoading(true)
     try {
-      const startTime = values.startTime instanceof Date 
-        ? values.startTime.toISOString() 
+      const startTime = values.startTime instanceof Date
+        ? values.startTime.toISOString()
         : values.startTime
-      
+
+      // antd Input type="number" 返回字符串，统一转数字后再入库
+      const totalVolume = Number(values.totalVolume)
+      const protein24hQuantitative = Number(values.protein24hQuantitative)
+      const creatinine = Number(values.creatinine)
+      const uricAcid = values.uricAcid !== undefined ? Number(values.uricAcid) : undefined
+      const specificGravity = Number(values.specificGravity)
+      const ph = Number(values.ph)
+
       // 计算24小时总蛋白量（如果未手动输入）
-      let proteinTotal24h = values.proteinTotal24h
-      if (!proteinTotal24h && values.protein24hQuantitative && values.totalVolume) {
+      let proteinTotal24h = values.proteinTotal24h !== undefined
+        ? Number(values.proteinTotal24h)
+        : undefined
+      if (proteinTotal24h === undefined || isNaN(proteinTotal24h)) {
         proteinTotal24h = calculateProteinTotal24h(
-          values.protein24hQuantitative,
-          values.totalVolume,
+          protein24hQuantitative,
+          totalVolume,
           userConfig?.unit.volume || 'ml'
         )
       }
 
       const testResult: TestResult = {
-        protein24hQuantitative: values.protein24hQuantitative,
+        protein24hQuantitative,
         proteinTotal24h,
         proteinRoutine: values.proteinRoutine,
         occultBlood: values.occultBlood,
-        creatinine: values.creatinine,
-        uricAcid: values.uricAcid,
-        specificGravity: values.specificGravity,
-        ph: values.ph,
+        creatinine,
+        uricAcid,
+        specificGravity,
+        ph,
         testedAt: startTime,
       }
 
@@ -191,7 +201,7 @@ const HistoryPage = () => {
         await cycleService.update(editingCycle.id, {
           startTime,
           endTime: dayjs(startTime).add(24, 'hour').toISOString(),
-          totalVolume: values.totalVolume,
+          totalVolume,
           testResults: testResult,
         })
         Toast.show({ content: '更新成功', icon: 'success' })
@@ -201,7 +211,7 @@ const HistoryPage = () => {
           startTime,
           endTime: dayjs(startTime).add(24, 'hour').toISOString(),
           status: 'manual',
-          totalVolume: values.totalVolume,
+          totalVolume,
           urinationRecords: [],
           testResults: testResult,
         })

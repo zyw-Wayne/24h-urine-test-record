@@ -128,3 +128,97 @@ describe('importBackup — 尿常规字符串原值保持（不受映射表影�
     expect(dbMocks.testCycles.clear).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('importBackup — 兼容历史脏数据（字符串数值/数组字段）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // 模拟真实线上备份：totalVolume 是字符串、testResults 数字字段是字符串、
+  // proteinRoutine/occultBlood/theme 是数组（antd-mobile Selector 单选曾返回数组）
+  const makeDirtyBackupJson = (): string =>
+    JSON.stringify({
+      version: '1.1.0',
+      exportTime: '2026-07-31T14:20:16.580Z',
+      testCycles: [
+        {
+          id: 'c51b8d70-5655-430a-93f4-4bedf65ea5a9',
+          startTime: '2026-07-31T14:19:00.000Z',
+          endTime: '2026-08-01T14:19:00.000Z',
+          status: 'manual',
+          totalVolume: '15', // 字符串数值
+          testResults: {
+            protein24hQuantitative: '8',
+            proteinTotal24h: 0.00011999999999999999,
+            proteinRoutine: ['阴性(-)'], // 数组
+            occultBlood: ['阴性(-)'],
+            creatinine: '44',
+            uricAcid: '85',
+            specificGravity: '1',
+            ph: '2',
+            testedAt: '2026-07-31T14:19:00.000Z',
+          },
+          createdAt: '2026-07-31T14:20:12.376Z',
+          updatedAt: '2026-07-31T14:20:12.376Z',
+          urinationRecords: [],
+        },
+      ],
+      userConfig: { nickname: '用户', unit: { volume: 'ml', protein: 'mg' }, theme: ['dark'] },
+    })
+
+  const importDirty = (): Promise<void | { warnings: string[] }> =>
+    importBackup(new File([makeDirtyBackupJson()], 'backup.json', { type: 'application/json' }))
+
+  it('字符串 totalVolume "15" 能恢复，且被归一化为数字 15', async () => {
+    await expect(importDirty()).resolves.not.toThrow()
+
+    const stored = dbMocks.testCycles.add.mock.calls[0][0] as { totalVolume: unknown }
+    expect(stored.totalVolume).toBe(15)
+    expect(typeof stored.totalVolume).toBe('number')
+
+    // update 调用也应写入数字
+    const updated = dbMocks.testCycles.update.mock.calls.find(
+      (c) => c[0] === 'c51b8d70-5655-430a-93f4-4bedf65ea5a9'
+    )
+    expect(updated?.[1].totalVolume).toBe(15)
+  })
+
+  it('字符串数字字段（creatinine/specificGravity/ph 等）归一化为 number', async () => {
+    await importDirty()
+
+    const stored = dbMocks.testCycles.add.mock.calls[0][0] as {
+      testResults: Record<string, unknown>
+    }
+    expect(stored.testResults.protein24hQuantitative).toBe(8)
+    expect(stored.testResults.creatinine).toBe(44)
+    expect(stored.testResults.uricAcid).toBe(85)
+    expect(stored.testResults.specificGravity).toBe(1)
+    expect(stored.testResults.ph).toBe(2)
+    expect(typeof stored.testResults.creatinine).toBe('number')
+  })
+
+  it('数组字段（proteinRoutine/occultBlood）取首个元素归一化为字符串', async () => {
+    await importDirty()
+
+    const stored = dbMocks.testCycles.add.mock.calls[0][0] as {
+      testResults: Record<string, unknown>
+    }
+    expect(stored.testResults.proteinRoutine).toBe('阴性(-)')
+    expect(stored.testResults.occultBlood).toBe('阴性(-)')
+    expect(typeof stored.testResults.proteinRoutine).toBe('string')
+  })
+
+  it('数组 theme 恢复时归一化为字符串', async () => {
+    await importDirty()
+
+    // configService.save 被调用时传入归一化后的 theme
+    const { configService } = await import('./db')
+    const savedConfig = (configService.save as any).mock.calls[0][0]
+    expect(savedConfig.theme).toBe('dark')
+    expect(Array.isArray(savedConfig.theme)).toBe(false)
+  })
+
+  it('修复前的报错场景（第1条总尿量无效）不再发生', async () => {
+    await expect(importDirty()).resolves.not.toThrowError(/总尿量无效/)
+  })
+})
