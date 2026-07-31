@@ -44,10 +44,11 @@ describe('convertRoutineValue', () => {
     expect(convertRoutineValue('4+')).toBe(4)
   })
 
-  it('映射备用表示（++/+++/++++）为数值', () => {
-    expect(convertRoutineValue('++')).toBe(1)
-    expect(convertRoutineValue('+++')).toBe(2)
-    expect(convertRoutineValue('++++')).toBe(3)
+  it('映射备用表示（+/++/+++/++++）为数值', () => {
+    expect(convertRoutineValue('+')).toBe(1)
+    expect(convertRoutineValue('++')).toBe(2)
+    expect(convertRoutineValue('+++')).toBe(3)
+    expect(convertRoutineValue('++++')).toBe(4)
   })
 
   it('未知值返回 null', () => {
@@ -67,8 +68,9 @@ describe('convertRoutineValue', () => {
 describe('getRoutineLabel', () => {
   it('数值转显示标签', () => {
     expect(getRoutineLabel(0)).toBe('阴性(-)')
-    expect(getRoutineLabel(1)).toBe('1+/++')
-    expect(getRoutineLabel(4)).toBe('4+')
+    expect(getRoutineLabel(1)).toBe('1+/+')
+    expect(getRoutineLabel(2)).toBe('2+/++')
+    expect(getRoutineLabel(4)).toBe('4+/++++')
   })
 
   it('null 返回"无数据"', () => {
